@@ -1,0 +1,20 @@
+{
+  "name": "compdi",
+  "version": "0.0.1",
+  "description": "",
+  "homepage": "https://github.com/franz-bendezu/compdi#readme",
+  "bugs": {
+    "url": "https://github.com/franz-bendezu/compdi/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/franz-bendezu/compdi.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
