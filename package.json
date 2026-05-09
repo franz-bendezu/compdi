@@ -1,20 +1,24 @@
 {
-  "name": "compdi",
-  "version": "0.0.1",
-  "description": "",
-  "homepage": "https://github.com/franz-bendezu/compdi#readme",
-  "bugs": {
-    "url": "https://github.com/franz-bendezu/compdi/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/franz-bendezu/compdi.git"
-  },
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "name": "compdi-monorepo",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Compdi monorepo powered by Turborepo",
+  "license": "MIT",
+  "packageManager": "npm@10.9.0",
+  "workspaces": [
+    "packages/*",
+    "playground"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.14",
+    "typescript": "^5.6.3"
   }
 }
