@@ -1,0 +1,40 @@
+{
+  "name": "unplugin-compdi",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.mts",
+      "import": "./dist/vite.mjs"
+    },
+    "./rollup": {
+      "types": "./dist/rollup.d.mts",
+      "import": "./dist/rollup.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "lint": "echo 'No lint rules configured for unplugin-compdi'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'No tests for unplugin-compdi'",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@compdi/shared": "0.2.0",
+    "magic-string": "^0.30.11",
+    "oxc-parser": "^0.129.0",
+    "unplugin": "^2.1.2"
+  },
+  "devDependencies": {
+    "tsdown": "^0.22.0",
+    "typescript": "^5.6.3"
+  }
+}
