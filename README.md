@@ -1,35 +1,23 @@
-# compdi-monorepo
+# compdi monorepo
 
-Monorepo de Compdi basado en Turborepo.
+Monorepo de Compdi con Turborepo.
 
-## Estructura
+## Packages
 
-```text
-compdi-monorepo/
-├── packages/
-│   ├── core/          # @compdi/core (macros tipadas)
-│   ├── unplugin/      # unplugin-compdi (transformador)
-│   └── shared/        # utilidades internas
-├── playground/        # app Vite para validar transformaciones
-├── turbo.json
-└── package.json
-```
+- [packages/core/README.md](packages/core/README.md): API de macros de DI tipadas.
+- [packages/compdi/README.md](packages/compdi/README.md): paquete de entrada con API unificada.
+- [packages/unplugin/README.md](packages/unplugin/README.md): plugin de transformación en build.
+- [packages/shared/README.md](packages/shared/README.md): utilidades internas del compilador.
 
-## Paquetes
-
-- `@compdi/core`: firmas TypeScript para macros de DI.
-- `@compdi/shared`: utilidades comunes para parsing/rewrite.
-- `unplugin-compdi`: plugin de compilación para reescribir macros.
-
-## Scripts
-
-- `npm run build`: build de todos los paquetes.
-- `npm run dev`: modo desarrollo en paralelo.
-- `npm run typecheck`: validación de tipos.
-- `npm run lint`: lint (placeholder por paquete).
-
-## Arranque rápido
+## Quick start
 
 1. `npm install`
 2. `npm run build`
-3. `npm run dev`
+3. `npm run typecheck`
+
+## Workspace scripts
+
+- `npm run build`
+- `npm run dev`
+- `npm run typecheck`
+- `npm run test`
