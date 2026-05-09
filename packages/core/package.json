@@ -1,0 +1,25 @@
+{
+  "name": "@compdi/core",
+  "version": "0.2.0",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts",
+    "dev": "tsdown src/index.ts --format esm --dts --watch",
+    "lint": "echo 'No lint rules configured for @compdi/core'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'No tests for @compdi/core'",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "tsdown": "^0.22.0",
+    "typescript": "^5.6.3"
+  }
+}
