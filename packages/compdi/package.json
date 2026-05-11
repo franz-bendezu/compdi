@@ -1,6 +1,6 @@
 {
   "name": "compdi",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Compdi DI runtime and compiler - complete package",
   "main": "./dist/index.mjs",
