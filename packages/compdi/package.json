@@ -5,6 +5,10 @@
   "description": "Compdi DI runtime and compiler - complete package",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -21,7 +25,9 @@
     "lint": "echo 'No lint rules configured for compdi'",
     "typecheck": "tsc --noEmit",
     "test": "echo 'No tests for compdi'",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "release": "npm publish",
+    "release:dry-run": "npm publish --dry-run"
   },
   "dependencies": {
     "@compdi/core": "*",

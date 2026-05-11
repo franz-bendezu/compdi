@@ -44,7 +44,9 @@
     "lint": "echo 'No lint rules configured for unplugin-compdi'",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "release": "npm publish",
+    "release:dry-run": "npm publish --dry-run"
   },
   "dependencies": {
     "magic-string": "^0.30.11",

@@ -5,6 +5,14 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "release": {
+      "dependsOn": ["build", "^release"],
+      "cache": false
+    },
+    "release:dry-run": {
+      "dependsOn": ["build", "^release:dry-run"],
+      "cache": false
+    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
