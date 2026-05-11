@@ -49,6 +49,17 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
+
+      - name: Bump release version
+        id: version
+        run: |
+          npm version "${{ inputs.version-bump }}" \
+            --workspaces \
+            --include-workspace-root \
+            --no-git-tag-version
+
+          VERSION=$(node -p "require('./package.json').version")
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
       
       - name: Run build
         run: npm run build
@@ -60,12 +71,6 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-
-      - name: Resolve release version
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
       
       - name: Validate package integrity
         run: |
@@ -75,16 +80,25 @@ jobs:
           test -f packages/compdi/dist/index.mjs || exit 1
           test -f packages/compdi/dist/index.d.mts || exit 1
           echo "✓ All distribution files verified"
+
+      - name: Commit release version
+        if: ${{ inputs.dry-run == false }}
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          git add package.json package-lock.json packages/*/package.json playground/package.json
+          git commit -m "chore: release v${VERSION}"
+          git push origin HEAD:${{ github.ref_name }}
       
       - name: Publish to npm (Dry Run)
         if: ${{ inputs.dry-run == true }}
         run: |
           echo "📋 Dry Run Mode: Simulating publish..."
+          echo "Release version: ${{ steps.version.outputs.value }}"
           echo "Would publish the following packages:"
-          echo "  - @compdi/core (public)"
-          echo "  - compdi (public)"
-          echo "  - @compdi/shared (private, skipped)"
-          echo "  - unplugin-compdi (private, skipped)"
+          echo "  - @compdi/core@${{ steps.version.outputs.value }} (public)"
+          echo "  - compdi@${{ steps.version.outputs.value }} (public)"
+          echo "  - @compdi/shared@${{ steps.version.outputs.value }} (private, skipped)"
+          echo "  - unplugin-compdi@${{ steps.version.outputs.value }} (private, skipped)"
       
       - name: Publish to npm
         if: ${{ inputs.dry-run == false }}
