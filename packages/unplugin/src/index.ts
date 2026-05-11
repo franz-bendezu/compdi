@@ -35,6 +35,5 @@ export default compdi;
 export const vite = compdi.vite;
 export const rollup = compdi.rollup;
 export const rolldown = compdi.rolldown;
-export const webpack = compdi.webpack;
 export const rspack = compdi.rspack;
 export const esbuild = compdi.esbuild;

@@ -22,10 +22,6 @@
       "types": "./dist/rolldown.d.mts",
       "import": "./dist/rolldown.mjs"
     },
-    "./webpack": {
-      "types": "./dist/webpack.d.mts",
-      "import": "./dist/webpack.mjs"
-    },
     "./rspack": {
       "types": "./dist/rspack.d.mts",
       "import": "./dist/rspack.mjs"
@@ -51,7 +47,12 @@
     "vite": "^8.0.12"
   },
   "devDependencies": {
+    "@rspack/cli": "^1.7.11",
+    "@rspack/core": "^1.7.11",
     "@types/node": "^25.6.2",
+    "esbuild": "^0.27.7",
+    "rolldown": "^1.0.0",
+    "rollup": "^4.60.3",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
