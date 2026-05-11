@@ -1,4 +1,4 @@
-import { createSingleton, createLazySingleton, defineAsyncSingleton } from "compdi";
+import { createSingleton, createLazySingleton, defineAsyncSingleton } from "@compdi/core";
 
 class Database {}
 class Analytics {
