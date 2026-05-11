@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import compdi from "unplugin-compdi/vite";
 
 export default defineConfig({
-  plugins: [compdi({}) as any],
+  plugins: [compdi({})],
   build: {
     target: "esnext"
   }
