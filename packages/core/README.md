@@ -49,8 +49,8 @@ const useDb = defineSingleton(Database, []);
 const createService = defineTransient(Service, [db]);
 const analytics = createLazySingleton(Service, [db]);
 const useAnalytics = defineLazySingleton(Service, [db]);
-const connection = createAsyncSingleton(async () => new Database(), []);
-const useConnection = defineAsyncSingleton(async () => new Database(), []);
+const connection = createAsyncSingleton(async (db: Database) => db, [db]);
+const useConnection = defineAsyncSingleton(async (db: Database) => db, [db]);
 ```
 
 ## Important runtime note

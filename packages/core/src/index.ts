@@ -1,5 +1,7 @@
 export type Constructor<T = object> = new (...args: any[]) => T;
-export type AsyncFactory<T> = () => Promise<T>;
+export type AsyncFactory<T, TArgs extends readonly unknown[] = readonly unknown[]> = (
+  ...args: TArgs
+) => Promise<T>;
 
 function macroNotTransformed(name: string): never {
   throw new Error(
@@ -52,18 +54,26 @@ export function defineLazySingleton<TCtor extends Constructor>(
   return macroNotTransformed("defineLazySingleton");
 }
 
-export function createAsyncSingleton<TFactory extends AsyncFactory<any>>(
+export function createAsyncSingleton<
+  TDeps extends readonly unknown[],
+  TResult,
+  TFactory extends AsyncFactory<TResult, TDeps>
+>(
   factory: TFactory,
-  deps: readonly unknown[]
+  deps: TDeps
 ): Awaited<ReturnType<TFactory>> {
   void factory;
   void deps;
   return macroNotTransformed("createAsyncSingleton");
 }
 
-export function defineAsyncSingleton<TFactory extends AsyncFactory<any>>(
+export function defineAsyncSingleton<
+  TDeps extends readonly unknown[],
+  TResult,
+  TFactory extends AsyncFactory<TResult, TDeps>
+>(
   factory: TFactory,
-  deps: readonly unknown[]
+  deps: TDeps
 ): () => Promise<Awaited<ReturnType<TFactory>>> {
   void factory;
   void deps;
