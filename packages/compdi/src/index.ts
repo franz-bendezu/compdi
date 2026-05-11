@@ -1,8 +1,11 @@
 // Reexport @compdi/core macros
 export {
+  createSingleton,
   defineSingleton,
   defineTransient,
+  createLazySingleton,
   defineLazySingleton,
+  createAsyncSingleton,
   defineAsyncSingleton,
   defineAppTeardown,
   type Constructor,

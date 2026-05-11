@@ -8,6 +8,11 @@ Use `compdi` when you want:
 - Zero macro calls at runtime (macros are transformed at build time).
 - One package for both DI API and plugin entry points.
 
+API rule:
+
+- `create...` exports values or instances.
+- `define...` exports functions or providers.
+
 ## Install
 
 ```bash
@@ -30,24 +35,36 @@ export default defineConfig({
 2. Define dependencies with macros:
 
 ```ts
-import { defineSingleton, defineTransient } from "compdi";
+import {
+  createSingleton,
+  createLazySingleton,
+  defineTransient,
+} from "compdi";
 
 class Database {}
 class Service {
   constructor(private readonly db: Database) {}
 }
 
-const db = defineSingleton(Database, []);
+class Analytics {
+  constructor(private readonly db: Database) {}
+}
+
+const db = createSingleton(Database, []);
 const createService = defineTransient(Service, [db]);
+const analytics = createLazySingleton(Analytics, [db]);
 ```
 
 ## What it exports
 
 ### Main import: `compdi`
 
+- `createSingleton`
 - `defineSingleton`
 - `defineTransient`
+- `createLazySingleton`
 - `defineLazySingleton`
+- `createAsyncSingleton`
 - `defineAsyncSingleton`
 - `defineAppTeardown`
 - `compdiPlugin`

@@ -12,9 +12,17 @@ npm install @compdi/core
 
 This package exports macro signatures used by the Compdi compiler plugin.
 
+Naming rule:
+
+- `create...` macros export realized values or instances.
+- `define...` macros export functions or providers.
+
+- `createSingleton(Target, deps)`
 - `defineSingleton(Target, deps)`
 - `defineTransient(Target, deps)`
+- `createLazySingleton(Target, deps)`
 - `defineLazySingleton(Target, deps)`
+- `createAsyncSingleton(factory, deps)`
 - `defineAsyncSingleton(factory, deps)`
 - `defineAppTeardown(resources)`
 
@@ -22,8 +30,12 @@ This package exports macro signatures used by the Compdi compiler plugin.
 
 ```ts
 import {
+  createSingleton,
   defineSingleton,
   defineTransient,
+  createLazySingleton,
+  defineLazySingleton,
+  createAsyncSingleton,
   defineAsyncSingleton,
 } from "@compdi/core";
 
@@ -32,9 +44,13 @@ class Service {
   constructor(private readonly db: Database) {}
 }
 
-const db = defineSingleton(Database, []);
+const db = createSingleton(Database, []);
+const useDb = defineSingleton(Database, []);
 const createService = defineTransient(Service, [db]);
-const connection = defineAsyncSingleton(async () => new Database(), []);
+const analytics = createLazySingleton(Service, [db]);
+const useAnalytics = defineLazySingleton(Service, [db]);
+const connection = createAsyncSingleton(async () => new Database(), []);
+const useConnection = defineAsyncSingleton(async () => new Database(), []);
 ```
 
 ## Important runtime note

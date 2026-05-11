@@ -2,9 +2,9 @@ import "./styles.css";
 
 import {
   defineAppTeardown,
-  defineAsyncSingleton,
-  defineLazySingleton,
-  defineSingleton,
+  createAsyncSingleton,
+  createLazySingleton,
+  createSingleton,
   defineTransient
 } from "@compdi/core";
 
@@ -83,12 +83,12 @@ class AsyncConnection {
   }
 }
 
-export const db = defineSingleton(Database, []);
-export const logger = defineSingleton(Logger, []);
+export const db = createSingleton(Database, []);
+export const logger = createSingleton(Logger, []);
 export const createService = defineTransient(Service, [db, logger]);
-export const analytics = defineLazySingleton(Analytics, [db]);
+export const analytics = createLazySingleton(Analytics, [db]);
 
-export const connection = defineAsyncSingleton(async () => {
+export const connection = createAsyncSingleton(async () => {
   return new AsyncConnection();
 }, []);
 
