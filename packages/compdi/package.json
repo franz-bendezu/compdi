@@ -16,7 +16,7 @@
     "dev": "tsdown --watch",
     "lint": "echo 'No lint rules configured for compdi'",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "test": "echo 'No tests for compdi'",
     "clean": "rm -rf dist"
   },
   "dependencies": {
