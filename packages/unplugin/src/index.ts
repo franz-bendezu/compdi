@@ -1,5 +1,5 @@
 import { createUnplugin } from "unplugin";
-import { transformCompdiMacros } from "./transform";
+import { transformCompdiMacros } from "./transform/index";
 
 export type CompdiPluginOptions = {
   include?: RegExp;
