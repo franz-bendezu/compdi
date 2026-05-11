@@ -2,37 +2,28 @@
 
 Dependency injection for TypeScript using compile-time macros.
 
-Use `compdi` when you want:
+Use `compdi` when you want typed DI definitions in source code and zero macro calls left at runtime.
 
-- Typed DI definitions in your code.
-- Zero macro calls at runtime (macros are transformed at build time).
-- One package for both DI API and plugin entry points.
-
-API rule:
-
-- `create...` exports values or instances.
-- `define...` exports functions or providers.
-
-## Install
+## Installation
 
 ```bash
 npm install compdi
 ```
 
-## Quick start (Vite)
+## Quick Start
 
-1. Add the plugin to `vite.config.ts`:
+### 1. Add the plugin
 
 ```ts
 import { defineConfig } from "vite";
-import compdi from "compdi/unplugin/vite";
+import { vitePlugin } from "compdi";
 
 export default defineConfig({
-  plugins: [compdi({})],
+  plugins: [vitePlugin()],
 });
 ```
 
-2. Define dependencies with macros:
+### 2. Define dependencies with macros
 
 ```ts
 import {
@@ -42,6 +33,7 @@ import {
 } from "compdi";
 
 class Database {}
+
 class Service {
   constructor(private readonly db: Database) {}
 }
@@ -55,9 +47,9 @@ const createService = defineTransient(Service, [db]);
 const analytics = createLazySingleton(Analytics, [db]);
 ```
 
-## What it exports
+## Exports
 
-### Main import: `compdi`
+The main `compdi` entry currently exports:
 
 - `createSingleton`
 - `defineSingleton`
@@ -70,17 +62,29 @@ const analytics = createLazySingleton(Analytics, [db]);
 - `compdiPlugin`
 - `vitePlugin`
 - `rollupPlugin`
+- `CompdiPluginOptions`
 
-### Subpath imports
+## Macro Rules
 
-- `compdi/core`
-- `compdi/unplugin`
-- `compdi/unplugin/vite`
-- `compdi/unplugin/rollup`
+- `create...` macros produce values or instances.
+- `define...` macros produce functions or providers.
+- Macros are compile-time only and must be erased by the build transform.
+
+Examples:
+
+- `createSingleton(Database, [])` produces a shared `Database` instance.
+- `defineSingleton(Database, [])` produces a `() => Database` getter.
+- `defineTransient(Service, [db])` produces a `() => Service` factory.
+- `createAsyncSingleton(factory, deps)` produces an awaited singleton value.
+- `defineAppTeardown(resources)` produces an async teardown function.
+
+## Build Integration
+
+If you need builder-specific entry points beyond the helpers re-exported here, use `unplugin-compdi` directly.
 
 ## Important
 
-Macros must be transformed during build. If plugin integration is missing, macro calls will throw at runtime by design.
+If macro calls reach runtime without the plugin transform, they throw by design.
 
 ## License
 

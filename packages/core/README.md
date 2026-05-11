@@ -2,20 +2,15 @@
 
 Type-safe macro API for Compdi dependency injection.
 
-## Install
+## Installation
 
 ```bash
 npm install @compdi/core
 ```
 
-## What this package provides
+## API
 
-This package exports macro signatures used by the Compdi compiler plugin.
-
-Naming rule:
-
-- `create...` macros export realized values or instances.
-- `define...` macros export functions or providers.
+This package exports the macro signatures consumed by the Compdi build transform.
 
 - `createSingleton(Target, deps)`
 - `defineSingleton(Target, deps)`
@@ -26,20 +21,26 @@ Naming rule:
 - `defineAsyncSingleton(factory, deps)`
 - `defineAppTeardown(resources)`
 
+Naming rule:
+
+- `create...` macros produce values or instances.
+- `define...` macros produce functions or providers.
+
 ## Usage
 
 ```ts
 import {
+  createAsyncSingleton,
+  createLazySingleton,
   createSingleton,
+  defineAsyncSingleton,
+  defineLazySingleton,
   defineSingleton,
   defineTransient,
-  createLazySingleton,
-  defineLazySingleton,
-  createAsyncSingleton,
-  defineAsyncSingleton,
 } from "@compdi/core";
 
 class Database {}
+
 class Service {
   constructor(private readonly db: Database) {}
 }
@@ -53,10 +54,11 @@ const connection = createAsyncSingleton(async (db: Database) => db, [db]);
 const useConnection = defineAsyncSingleton(async (db: Database) => db, [db]);
 ```
 
-## Important runtime note
+## Runtime Behavior
 
-These APIs are compile-time macros. They must be transformed by the Compdi plugin during build.
-If macro calls reach runtime without transformation, they throw by design.
+These APIs are compile-time macros. They must be transformed during build by `unplugin-compdi` or a package that re-exports it.
+
+If a macro call reaches runtime without transformation, it throws by design.
 
 ## License
 

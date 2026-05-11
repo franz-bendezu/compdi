@@ -6,11 +6,12 @@ Internal shared utilities for the Compdi compiler and plugin packages.
 
 This package is private and not intended for direct external use.
 
-## Includes
+## What It Contains
 
-- Dependency list parsing helpers
-- Top-level argument splitting helpers
-- Parenthesis matching utilities
+- dependency list parsing helpers
+- top-level argument splitting helpers
+- parenthesis matching utilities
+- transform support code shared across compiler packages
 
 ## License
 
