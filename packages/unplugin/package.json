@@ -31,8 +31,7 @@
     "@compdi/shared": "*",
     "magic-string": "^0.30.11",
     "oxc-parser": "^0.129.0",
-    "unplugin": "^3.0.0",
-    "compdi": "*"
+    "unplugin": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.2",
