@@ -29,7 +29,8 @@
     "test": "echo 'No tests for @compdi/core'",
     "clean": "rm -rf dist",
     "release": "npm publish",
-    "release:dry-run": "npm publish --dry-run"
+    "release:dry-run": "npm publish --dry-run",
+    "release:ci": "npm publish --provenance"
   },
   "devDependencies": {
     "tsdown": "^0.22.0",
