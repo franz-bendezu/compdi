@@ -15,6 +15,18 @@ Monorepo de Compdi con Turborepo.
 2. `npm run build`
 3. `npm run typecheck`
 
+## API Convention
+
+- `create...` macros export values or instances.
+- `define...` macros export functions or providers.
+
+Examples:
+
+- `createSingleton(Database, [])` exports a shared `Database` instance.
+- `defineTransient(Service, [db])` exports a `() => Service` factory.
+- `createLazySingleton(Analytics, [db])` exports a lazily materialized shared instance.
+- `defineLazySingleton(Analytics, [db])` exports a lazy getter.
+
 ## Workspace scripts
 
 - `npm run build`
