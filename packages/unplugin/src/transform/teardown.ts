@@ -1,4 +1,4 @@
-import { splitDependencyList } from "@compdi/shared";
+import { splitDependencyList } from "./shared";
 import { TEARDOWN_REGEX, resolveTeardownResource } from "./context";
 import type { BindingInfo, Replacement } from "./types";
 

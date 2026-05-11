@@ -136,8 +136,7 @@ Your monorepo has:
 - `@compdi/core` - Type-safe DI macros
 - `compdi` - Metapackage with unified API
 
-### Private Packages (not published)
-- `@compdi/shared` - Internal utilities (private: true)
-- `unplugin-compdi` - Build plugin (private: true)
+### Not Published By This Workflow
+- `unplugin-compdi` - Build plugin (not published by this workflow)
 
-The workflow automatically handles this via the `private` field in package.json.
+This workflow currently publishes only `@compdi/core` and `compdi`.

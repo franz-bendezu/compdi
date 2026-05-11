@@ -1,4 +1,4 @@
-import { findMatchingParen, splitTopLevelArgs } from "@compdi/shared";
+import { findMatchingParen, splitTopLevelArgs } from "./shared";
 import { resolveDependencies } from "./context";
 import type { BindingInfo, Replacement } from "./types";
 

@@ -2,12 +2,17 @@
 
 Build-time transform for Compdi macros.
 
-This package is currently internal to the monorepo and marked as private.
-
 ## Installation
 
 ```bash
 npm install -D unplugin-compdi
+```
+
+## Publishing Locally
+
+```bash
+npm run build --workspace packages/unplugin
+npm publish --workspace packages/unplugin
 ```
 
 ## Exports

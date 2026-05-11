@@ -10,28 +10,6 @@ export function splitDependencyList(raw: string): string[] {
     .filter(Boolean);
 }
 
-export function resolveDependencyExpression(
-  dependency: string,
-  singletonBindings: ReadonlySet<string>
-): string {
-  if (singletonBindings.has(dependency)) {
-    return `__${dependency}`;
-  }
-
-  return dependency;
-}
-
-export function resolveDependencies(
-  rawDependencies: string,
-  singletonBindings: ReadonlySet<string>
-): string {
-  const deps = splitDependencyList(rawDependencies).map((dep) =>
-    resolveDependencyExpression(dep, singletonBindings)
-  );
-
-  return deps.join(", ");
-}
-
 export function findMatchingParen(source: string, openParenIndex: number): number {
   let depth = 0;
 

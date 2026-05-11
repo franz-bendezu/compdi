@@ -97,8 +97,7 @@ jobs:
           echo "Would publish the following packages:"
           echo "  - @compdi/core@${{ steps.version.outputs.value }} (public)"
           echo "  - compdi@${{ steps.version.outputs.value }} (public)"
-          echo "  - @compdi/shared@${{ steps.version.outputs.value }} (private, skipped)"
-          echo "  - unplugin-compdi@${{ steps.version.outputs.value }} (private, skipped)"
+          echo "  - unplugin-compdi@${{ steps.version.outputs.value }} (not published by this workflow)"
       
       - name: Publish to npm
         if: ${{ inputs.dry-run == false }}
@@ -130,8 +129,7 @@ jobs:
             - @compdi/core@${{ steps.version.outputs.value }} - Type-safe DI macros
             - compdi@${{ steps.version.outputs.value }} - Unified public API
 
-            ### Private (not published)
-            - @compdi/shared@${{ steps.version.outputs.value }} - Internal utilities
+            ### Not published by this workflow
             - unplugin-compdi@${{ steps.version.outputs.value }} - Build plugin
 
             ## Links

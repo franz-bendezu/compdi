@@ -1,5 +1,5 @@
 import { parseSync } from "oxc-parser";
-import { splitDependencyList } from "@compdi/shared";
+import { splitDependencyList } from "./shared";
 import type { BindingInfo, BindingKind } from "./types";
 
 export const CORE_IMPORT_REGEX = /import\s*{[^}]*}\s*from\s*["'](?:@compdi\/core|compdi)["'];?\s*/g;
