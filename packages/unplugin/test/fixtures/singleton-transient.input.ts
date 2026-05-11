@@ -7,3 +7,12 @@ class Service {
 
 export const db = createSingleton(Database, []);
 export const createService = defineTransient(Service, [db]);
+
+export function app() {
+  const service = createService();
+
+  return {
+    db,
+    service
+  };
+}

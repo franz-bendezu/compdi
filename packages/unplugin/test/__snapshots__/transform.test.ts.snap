@@ -25,6 +25,16 @@ export const useDatabase = () => {
   if (!__promise_useDatabase) __promise_useDatabase = Promise.resolve((async () => new Database())());
   return __promise_useDatabase;
 };
+
+export async function app() {
+  const asyncDatabase = await useDatabase();
+
+  return {
+    db,
+    analytics,
+    asyncDatabase
+  };
+}
 "
 `;
 
@@ -37,6 +47,15 @@ class Service {
 
 export const db = new Database();
 export const createService = () => new Service(db);
+
+export function app() {
+  const service = createService();
+
+  return {
+    db,
+    service
+  };
+}
 "
 `;
 
@@ -77,5 +96,15 @@ export const teardown = async () => {
   }
   await Promise.allSettled(tasks);
 };
+
+export async function app() {
+  const remote = await useRemote();
+
+  return {
+    db,
+    remote,
+    teardown
+  };
+}
 "
 `;

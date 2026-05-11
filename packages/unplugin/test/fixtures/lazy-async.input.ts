@@ -8,3 +8,13 @@ class Analytics {
 export const db = createSingleton(Database, []);
 export const analytics = createLazySingleton(Analytics, [db]);
 export const useDatabase = defineAsyncSingleton(async () => new Database(), []);
+
+export async function app() {
+  const asyncDatabase = await useDatabase();
+
+  return {
+    db,
+    analytics,
+    asyncDatabase
+  };
+}
