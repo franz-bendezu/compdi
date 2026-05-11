@@ -9,35 +9,19 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
-    },
-    "./core": {
-      "types": "../core/dist/index.d.mts",
-      "import": "../core/dist/index.mjs"
-    },
-    "./unplugin": {
-      "types": "../unplugin/dist/index.d.mts",
-      "import": "../unplugin/dist/index.mjs"
-    },
-    "./unplugin/vite": {
-      "types": "../unplugin/dist/vite.d.mts",
-      "import": "../unplugin/dist/vite.mjs"
-    },
-    "./unplugin/rollup": {
-      "types": "../unplugin/dist/rollup.d.mts",
-      "import": "../unplugin/dist/rollup.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --format esm --dts",
-    "dev": "tsdown src/index.ts --format esm --dts --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "lint": "echo 'No lint rules configured for compdi'",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'No tests for compdi'",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@compdi/core": "0.2.0",
-    "unplugin-compdi": "0.2.0"
+    "@compdi/core": "*",
+    "unplugin-compdi": "*"
   },
   "devDependencies": {
     "tsdown": "^0.22.0",

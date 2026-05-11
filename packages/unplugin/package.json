@@ -23,12 +23,12 @@
     "build": "tsdown",
     "dev": "tsdown --watch",
     "lint": "echo 'No lint rules configured for unplugin-compdi'",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'No tests for unplugin-compdi'",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@compdi/shared": "0.2.0",
+    "@compdi/shared": "*",
     "magic-string": "^0.30.11",
     "oxc-parser": "^0.129.0",
     "unplugin": "^3.0.0"

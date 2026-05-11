@@ -11,15 +11,16 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --format esm --dts",
-    "dev": "tsdown src/index.ts --format esm --dts --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "lint": "echo 'No lint rules configured for @compdi/core'",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'No tests for @compdi/core'",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
     "tsdown": "^0.22.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }
