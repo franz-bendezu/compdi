@@ -1,12 +1,117 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Compdi Playground</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compdi Playground</title>
+</head>
+
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <div class="kicker">Compdi Playground</div>
+        <h1>See each macro produce a distinct runtime shape.</h1>
+        <p class="lede">
+          This demo wires real classes through <code>defineSingleton</code>,
+          <code>defineTransient</code>, <code>defineLazySingleton</code>,
+          <code>defineAsyncSingleton</code>, and <code>defineAppTeardown</code>.
+        </p>
+      </div>
+      <aside class="hero-panel">
+        <span class="pill">Lifecycle snapshot</span>
+        <p class="lede">DB: <span id="snapshot-db">connected</span></p>
+        <p class="lede">Async connection: <span id="snapshot-connection">ready</span></p>
+        <p class="lede">Lazy analytics instances: <span id="snapshot-analytics-count">0</span></p>
+        <p class="lede">Teardown runs: <span id="snapshot-teardown-count">0</span></p>
+      </aside>
+    </section>
+
+    <section class="status-grid">
+      <article class="card" id="card-db">
+        <span class="eyebrow">Singleton database</span>
+        <strong id="status-db">db#? • alive</strong>
+      </article>
+
+      <article class="card good" id="card-logger">
+        <span class="eyebrow">Singleton logger</span>
+        <strong id="status-logger">logger#? • shared</strong>
+      </article>
+
+      <article class="card" id="card-connection">
+        <span class="eyebrow">Async singleton</span>
+        <strong id="status-connection">connection#? • online</strong>
+      </article>
+
+      <article class="card" id="card-analytics">
+        <span class="eyebrow">Lazy singleton</span>
+        <strong id="status-analytics">not created</strong>
+      </article>
+    </section>
+
+    <section class="action-grid">
+      <article class="action">
+        <span class="eyebrow">Transient</span>
+        <strong>Create a new service instance</strong>
+        <p class="lede">Each click should increment the service identity while reusing the same singleton dependencies.
+        </p>
+        <button id="action-service" type="button">Create transient service</button>
+      </article>
+
+      <article class="action">
+        <span class="eyebrow">Lazy singleton</span>
+        <strong>Touch analytics for the first time</strong>
+        <p class="lede">The analytics instance should not exist until this interaction forces access.</p>
+        <button id="action-analytics" type="button">Ping analytics</button>
+      </article>
+
+      <article class="action">
+        <span class="eyebrow">Async singleton</span>
+        <strong>Use the resolved async dependency</strong>
+        <p class="lede">The async factory has already completed, so this reads like a normal singleton at runtime.</p>
+        <button id="action-connection" type="button">Call async connection</button>
+      </article>
+
+      <article class="action">
+        <span class="eyebrow">Teardown</span>
+        <strong>Dispose active resources</strong>
+        <p class="lede">This should flip database and async connection state without touching the shared logger.</p>
+        <button id="action-teardown" type="button">Run teardown</button>
+      </article>
+    </section>
+
+    <section class="event-grid">
+      <article class="event">
+        <span class="eyebrow">Last transient run</span>
+        <p id="event-service">Click "Create transient service" to instantiate one.</p>
+        <p class="lede">Transient instances created: <span id="event-service-count">0</span></p>
+      </article>
+
+      <article class="event">
+        <span class="eyebrow">Last analytics run</span>
+        <p id="event-analytics">Lazy singleton has not been touched yet.</p>
+        <p class="lede">Analytics constructor calls: <span id="event-analytics-count">0</span></p>
+      </article>
+
+      <article class="event">
+        <span class="eyebrow">Last connection run</span>
+        <p id="event-connection">Async singleton resolved during module evaluation.</p>
+        <p class="lede" id="event-teardown-status">Resources are active.</p>
+      </article>
+
+      <article class="event">
+        <span class="eyebrow">Macro summary</span>
+        <p>
+          Shared identities: <code id="summary-db">db#?</code>,
+          <code id="summary-logger">logger#?</code>,
+          <code id="summary-connection">connection#?</code>
+        </p>
+        <p class="lede">Transient output should change; singleton output should not.</p>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>
