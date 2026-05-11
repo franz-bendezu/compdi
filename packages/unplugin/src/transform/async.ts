@@ -55,15 +55,14 @@ export function collectAsyncSingletonReplacements(
       end: endIndex,
       code:
         mode === "create"
-          ? `const ${binding.instanceName} = await (${factory})(${invokeArgs});\nexport const ${name} = ${binding.instanceName};`
+          ? `export const ${name} = await (${factory})(${invokeArgs});`
           : [
               `let ${binding.promiseName} = null;`,
-              `const ${binding.getterName} = () => {`,
+              `const ${binding.peekName} = () => ${binding.promiseName};`,
+              `export const ${name} = () => {`,
               `  if (!${binding.promiseName}) ${binding.promiseName} = Promise.resolve((${factory})(${invokeArgs}));`,
               `  return ${binding.promiseName};`,
-              `};`,
-              `const ${binding.peekName} = () => ${binding.promiseName};`,
-              `export const ${name} = ${binding.getterName};`
+              `};`
             ].join("\n")
     });
 

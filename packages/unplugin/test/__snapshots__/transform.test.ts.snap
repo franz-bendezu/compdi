@@ -7,11 +7,10 @@ class Analytics {
   constructor(readonly db: Database) {}
 }
 
-const __db = new Database();
-export const db = __db;
+export const db = new Database();
 let __lazy_analytics = null;
 const __get_analytics = () => {
-  if (!__lazy_analytics) __lazy_analytics = new Analytics(__db);
+  if (!__lazy_analytics) __lazy_analytics = new Analytics(db);
   return __lazy_analytics;
 };
 const __peek_analytics = () => __lazy_analytics;
@@ -21,12 +20,11 @@ export const analytics = new Proxy({}, {
   }
 });
 let __promise_useDatabase = null;
-const __get_useDatabase = () => {
+const __peek_useDatabase = () => __promise_useDatabase;
+export const useDatabase = () => {
   if (!__promise_useDatabase) __promise_useDatabase = Promise.resolve((async () => new Database())());
   return __promise_useDatabase;
 };
-const __peek_useDatabase = () => __promise_useDatabase;
-export const useDatabase = __get_useDatabase;
 "
 `;
 
@@ -37,9 +35,8 @@ class Service {
   constructor(readonly db: Database) {}
 }
 
-const __db = new Database();
-export const db = __db;
-export const createService = () => new Service(__db);
+export const db = new Database();
+export const createService = () => new Service(db);
 "
 `;
 
@@ -49,20 +46,18 @@ class Database {
   [Symbol.dispose]() {}
 }
 
-const __db = new Database();
-export const db = __db;
+export const db = new Database();
 let __promise_useRemote = null;
-const __get_useRemote = () => {
+const __peek_useRemote = () => __promise_useRemote;
+export const useRemote = () => {
   if (!__promise_useRemote) __promise_useRemote = Promise.resolve((async () => ({
   async [Symbol.asyncDispose]() {}
 }))());
   return __promise_useRemote;
 };
-const __peek_useRemote = () => __promise_useRemote;
-export const useRemote = __get_useRemote;
 export const teardown = async () => {
   const tasks = [];
-  const __resource_0 = __db;
+  const __resource_0 = db;
   if (__resource_0?.[Symbol.asyncDispose]) tasks.push(__resource_0[Symbol.asyncDispose]());
   else if (__resource_0?.[Symbol.dispose]) {
     try {

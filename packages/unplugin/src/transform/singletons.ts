@@ -15,15 +15,11 @@ export function collectSingletonReplacements(
     const name = match[1];
     const target = match[2].trim();
     const deps = resolveDependencies(match[3], bindings, "sync");
-    const binding = bindings.get(name);
-    if (!binding) {
-      continue;
-    }
 
     replacements.push({
       start: match.index ?? 0,
       end: (match.index ?? 0) + match[0].length,
-      code: `const ${binding.instanceName} = new ${target}(${deps});\nexport const ${name} = ${binding.instanceName};`
+      code: `export const ${name} = new ${target}(${deps});`
     });
   }
 

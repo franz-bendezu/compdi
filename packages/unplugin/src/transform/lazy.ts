@@ -53,12 +53,11 @@ export function collectLazyReplacements(
       end: (match.index ?? 0) + match[0].length,
       code: [
         `let ${binding.instanceName} = null;`,
-        `const ${binding.getterName} = () => {`,
+        `const ${binding.peekName} = () => ${binding.instanceName};`,
+        `export const ${name} = () => {`,
         `  if (!${binding.instanceName}) ${binding.instanceName} = new ${target}(${deps});`,
         `  return ${binding.instanceName};`,
-        `};`,
-        `const ${binding.peekName} = () => ${binding.instanceName};`,
-        `export const ${name} = ${binding.getterName};`
+        `};`
       ].join("\n")
     });
   }

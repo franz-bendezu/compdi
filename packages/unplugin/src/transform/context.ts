@@ -28,25 +28,33 @@ export function parseWithOxc(code: string, id: string): boolean {
 function createBindingInfo(name: string, kind: BindingKind): BindingInfo {
   switch (kind) {
     case "create-singleton":
-    case "define-singleton":
     case "create-async-singleton":
+      return {
+        kind,
+        instanceName: name
+      };
+    case "define-singleton":
       return {
         kind,
         instanceName: `__${name}`
       };
     case "create-lazy-singleton":
-    case "define-lazy-singleton":
       return {
         kind,
         instanceName: `__lazy_${name}`,
         getterName: `__get_${name}`,
         peekName: `__peek_${name}`
       };
+    case "define-lazy-singleton":
+      return {
+        kind,
+        instanceName: `__lazy_${name}`,
+        peekName: `__peek_${name}`
+      };
     case "define-async-singleton":
       return {
         kind,
-        instanceName: `__value_${name}`,
-        getterName: `__get_${name}`,
+        instanceName: name,
         peekName: `__peek_${name}`,
         promiseName: `__promise_${name}`
       };
@@ -98,10 +106,11 @@ function resolveDependencyExpression(
     case "create-async-singleton":
       return binding.instanceName;
     case "create-lazy-singleton":
-    case "define-lazy-singleton":
       return `${binding.getterName}()`;
+    case "define-lazy-singleton":
+      return `${dependency}()`;
     case "define-async-singleton":
-      return mode === "async" ? `await ${binding.getterName}()` : dependency;
+      return mode === "async" ? `await ${dependency}()` : dependency;
   }
 }
 
