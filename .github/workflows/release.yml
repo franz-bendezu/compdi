@@ -103,7 +103,7 @@ jobs:
       - name: Publish to npm
         if: ${{ inputs.dry-run == false }}
         run: |
-          # Trusted publishing with OIDC provenance.
+          # Publishes with provenance. Tokenless trusted publishing also requires npm-side trusted publisher setup.
           npm publish --workspace packages/core --access public --provenance
           npm publish --workspace packages/compdi --access public --provenance
           echo "✓ Packages published successfully"

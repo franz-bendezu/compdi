@@ -14,7 +14,7 @@ Developer Push → GitHub Actions
               • Manual approval required
                 ↓
             [Publish Phase]
-              • npm publish (with secret token)
+              • npm publish via npm trusted publisher
               • Create git tag
               • Create GitHub Release
                 ↓
@@ -23,47 +23,30 @@ Developer Push → GitHub Actions
               • Confirm publication
 ```
 
-## Token Management Strategy
+## Authentication Strategy
 
-### Token Type Comparison
+This repository is public and should publish through npm trusted publishers.
 
-| Aspect | Classic Token | Automation Token |
-|--------|---------------|------------------|
-| Scope Control | ✓ Yes | ✓ Yes (stricter) |
-| Expiration | Manual revocation | Auto-expires |
-| Rotation | Manual | Automatic |
-| Cost | Free | Free |
-| **Recommended** | ❌ No | ✅ YES |
+Required pieces:
 
-### Recommended Setup
+1. npm trusted publisher configured for `@compdi/core`
+2. npm trusted publisher configured for `compdi`
+3. GitHub Actions workflow permission `id-token: write`
 
-1. **Create Automation Token** (preferred)
-   - Expires automatically (reduces breach window)
-   - Simpler management
-   - Better for CI/CD
-
-2. **Store in GitHub Secrets**
-   - Encrypted at rest
-   - Only accessible in Actions workflows
-   - Never visible in logs
-
-3. **Use only for Publishing**
-   - Don't use for local development
-   - Use `npm login` for local work
+The GitHub workflow can mint the OIDC token, but npm trusted publisher entries still have to be configured on npmjs.com.
 
 ## Security Features of Your Workflow
 
-### 1. Encryption & Access Control
+### 1. OIDC-Based Publish Authentication
 
 ```yaml
-env:
-  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+permissions:
+  id-token: write
 ```
 
-✓ Token is encrypted in GitHub Secrets
-✓ Only accessible in workflow run context
-✓ Never logged to console
-✓ Masked in workflow logs
+✓ No long-lived npm publish token is required
+✓ GitHub Actions mints a short-lived OIDC token for the workflow
+✓ npm validates the workflow identity against the trusted publisher settings
 
 ### 2. Validation Gates
 
@@ -89,6 +72,7 @@ Every publication has:
 - **Git Tag**: Version tracking
 - **GitHub Release**: Documentation
 - **npm Registry**: Publication history
+- **Provenance Attestation**: Generated automatically for public packages from this public repository
 
 ```bash
 # Check publication history
@@ -113,38 +97,25 @@ npm info compdi
 ### ❌ DO NOT
 
 ```yaml
-# ❌ NEVER hardcode tokens
-env:
-  NPM_TOKEN: "npm_xxxxxxxxxxxx"
+# ❌ Don't mismatch the trusted publisher workflow filename
+# npm expects exactly: release.yml
 
-# ❌ NEVER log the token
-run: echo $NPM_TOKEN
+# ❌ Don't remove id-token: write
 
-# ❌ NEVER commit tokens to git
-# (even if you revoke them later, history is still there)
-
-# ❌ NEVER use personal tokens in shared CI
-# (use service account or automation tokens)
+# ❌ Don't assume configuring GitHub alone enables trusted publishing
+# npm package settings must also be configured
 ```
 
 ### ✓ DO
 
 ```yaml
-# ✓ Use GitHub Secrets
-env:
-  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+# ✓ Keep the repository public
 
-# ✓ GitHub automatically masks secret values
-# (they appear as *** in logs)
+# ✓ Keep the workflow filename stable
 
-# ✓ Use Automation tokens
-# (auto-expiring, scoped permissions)
+# ✓ Keep id-token: write on the release workflow
 
-# ✓ Rotate tokens regularly
-# (set calendar reminder every 6 months)
-
-# ✓ Minimize token scope
-# (only "Publish" permission if available)
+# ✓ Configure trusted publishers for each public package on npmjs.com
 ```
 
 ## Enhanced Security Configuration (Optional)
@@ -188,20 +159,6 @@ Then in GitHub:
     # Store artifacts before publishing
 ```
 
-## Vulnerability Scanning
-
-### Add Dependency Check
-
-```yaml
-- name: Security audit
-  run: npm audit --audit-level=moderate
-  # Fails if vulnerabilities found
-
-- name: SBOM generation (optional)
-  run: npm sbom --workspace packages/core
-  # Creates software bill of materials
-```
-
 ## monitoring & Alerts
 
 ### Check Publication Status
@@ -235,54 +192,13 @@ If a bad version is published:
 npm deprecate @compdi/core@0.2.0 "Use 0.2.1 instead"
 npm deprecate compdi@0.2.0 "Use 0.2.1 instead"
 
-# Publish a new patch version
-npm publish --workspace packages/core --access public
-npm publish --workspace packages/compdi --access public
+# Trigger a new patch release through the release workflow
+# and publish the fixed version from GitHub Actions
 ```
-
-## Regular Maintenance
-
-### Monthly
-- [ ] Check npm account security
-- [ ] Review GitHub Actions logs
-- [ ] Look for security advisories
-
-### Quarterly
-- [ ] Run `npm audit` and fix vulnerabilities
-- [ ] Review token expiration dates
-- [ ] Update GitHub Actions versions
-
-### Bi-annually
-- [ ] Rotate npm token
-- [ ] Review workflow permissions
-- [ ] Audit GitHub repository settings
-
-## Emergency Response
-
-If token is compromised:
-
-1. **Immediate**
-   ```bash
-   # Revoke compromised token on npmjs.com
-   # (Settings → Tokens → Delete token)
-   ```
-
-2. **Short term**
-   ```bash
-   # Create new token with same name
-   # Update GitHub Secret
-   ```
-
-3. **Follow-up**
-   ```bash
-   # Check npm audit log
-   # Review GitHub Actions runs
-   # Look for unauthorized publishes
-   ```
 
 ## Questions & Support
 
 For help:
 - npm docs: https://docs.npmjs.com/
 - GitHub Actions: https://docs.github.com/en/actions
-- npm token management: https://npmjs.com/settings/your-username/tokens
+- npm trusted publishers: https://docs.npmjs.com/trusted-publishers

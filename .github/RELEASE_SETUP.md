@@ -1,42 +1,43 @@
 # GitHub Actions Release Configuration
 
-## Setup Instructions
+## Trusted Publishing Setup
 
-### 1. Create NPM Automation Token (Recommended)
+This repository is public and uses npm trusted publishing with GitHub Actions OIDC.
+That means:
 
-The most secure way to publish packages is using an npm **Automation Token**:
+- No `NPM_TOKEN` is required for `npm publish`
+- `id-token: write` in the workflow is required
+- Provenance is generated automatically for public packages published from this public repository
 
-1. Go to [npmjs.com](https://www.npmjs.com/settings/franz-bendezu/tokens)
-2. Click "Create Token" → Select **"Automation"** type
-3. Name it: `github-actions-ci`
-4. **Important**: This token type has restricted permissions and expires regularly
+### 1. Configure npm Trusted Publishers
 
-### 2. Alternative: Generate Classic Token
+Create a trusted publisher entry on npmjs.com for each public package:
 
-If automation tokens are unavailable:
+1. Open package settings for `@compdi/core`
+2. Open **Trusted Publisher**
+3. Add a GitHub Actions publisher with:
+   - Owner: `franz-bendezu`
+   - Repository: `compdi`
+   - Workflow filename: `release.yml`
+4. Repeat the same setup for `compdi`
 
-1. Go to [npmjs.com Settings](https://www.npmjs.com/settings/franz-bendezu/tokens)
-2. Click "Create Token" → Select **"Read and Publish"**
-3. Name it descriptively: `github-actions-release`
-4. **Security considerations**:
-   - Use the most restrictive scope possible
-   - Enable 2FA on your npm account
-   - Rotate tokens regularly (every 6 months)
+These settings are managed on npmjs.com. The GitHub workflow cannot create them.
 
-### 3. Add Token to GitHub Secrets
+### 2. Verify GitHub Actions Permissions
 
-1. Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions**
-2. Click **"New repository secret"**
-3. Name: `NPM_TOKEN`
-4. Value: Paste your npm token
-5. Click **"Add secret"**
+The workflow already includes the required OIDC permission:
 
-### 4. Enable Workflow Permissions
+```yaml
+permissions:
+  contents: write
+  id-token: write
+```
 
-1. Repository → **Settings** → **Actions** → **General**
-2. Under **Workflow permissions**:
-   - Select: **"Read and write permissions"**
-   - Enable: **"Allow GitHub Actions to create and approve pull requests"**
+Repository workflow permissions should still allow GitHub Actions to push the release commit and tag.
+
+### 3. Public Repo Requirement
+
+Because this repository is public and the published packages are public, npm can generate provenance attestations automatically when trusted publishing succeeds.
 
 ## Running the Workflow
 
@@ -53,6 +54,7 @@ This will:
 ✓ Verify build succeeds
 ✓ Verify typecheck passes
 ✓ Verify distribution files exist
+✓ Bump package versions for the release
 ✓ **Simulate** publication without actually publishing
 
 ### Full Release
@@ -66,37 +68,27 @@ This will:
 
 This will:
 ✓ Run full validation
+✓ Bump versions across the workspace
 ✓ Publish @compdi/core to npm (public)
 ✓ Publish compdi to npm (public)
 ✓ Create git tag (v0.2.0, etc.)
 ✓ Create GitHub Release
 ✓ Verify npm registry
 
-## Security Best Practices
+## What This Workflow Already Does
 
-### ✓ What Your Workflow Does Right
+1. **OIDC publish permissions**
+   - Includes `id-token: write` for npm trusted publishing
 
-1. **Token Security**
-   - Stores token in GitHub Secrets (encrypted)
-   - Never logs the token
-   - Uses `${{ secrets.NPM_TOKEN }}` safely
+2. **Validation before publish**
+   - Runs build and typecheck
+   - Verifies expected dist files exist
 
-2. **Validation Before Publish**
-   - Runs `npm run build` to verify code compiles
-   - Runs `npm run typecheck` to verify types
-   - Validates distribution files exist
-   - All checks must pass before publishing
-
-3. **Access Control**
-   - Only public packages are published
-   - Private packages are protected by `"private": true` in package.json
-   - Token is only used in release workflow
-
-4. **Audit Trail**
-   - GitHub Actions logs all steps
-   - Git tags track releases
-   - GitHub Releases provide documentation
-   - npm registry maintains publication history
+3. **Release traceability**
+   - Commits version bumps
+   - Creates a git tag
+   - Creates a GitHub Release
+   - Verifies the published npm versions
 
 ### ⚠️ Additional Security Measures
 
@@ -110,46 +102,31 @@ environment:
     - required-reviewers: 1  # Requires manual approval
 ```
 
-### 🔄 Token Rotation
-
-Set a calendar reminder to rotate tokens every 6 months:
-
-1. Generate new token on npm
-2. Update GitHub Secret
-3. Revoke old token on npm
-
 ## Troubleshooting
 
-### "E403: You don't have permission to publish this package"
+### "ENEEDAUTH" or publish authentication errors
 
-**Solution**: Token doesn't have publish permissions
-- Verify token type is "Read and Publish" or "Automation"
-- Regenerate token with correct permissions
+**Check**:
+- The npm package has a trusted publisher configured
+- The trusted publisher repository is `franz-bendezu/compdi`
+- The workflow filename is exactly `release.yml`
+- The workflow still has `id-token: write`
 
-### "E401: Unauthorized"
+### Publish succeeds locally but fails in GitHub Actions
 
-**Solution**: Token is invalid or expired
-- Check token hasn't been revoked
-- Verify it's correctly pasted in GitHub Secrets
-- Regenerate and update if needed
+**Check**:
+- The trusted publisher was configured on npm for both `@compdi/core` and `compdi`
+- The package metadata and repository settings still match the public GitHub repository
+
+### Provenance or Rekor transient failure
+
+This usually indicates an upstream transparency log issue rather than a package configuration issue. Re-run the workflow after confirming the version was not already published.
 
 ### Workflow doesn't trigger
 
 **Verify**:
 - Go to **Settings** → **Actions** → **General**
 - Check "Workflow permissions" are set to "Read and write"
-
-## Publishing Manually (Alternative)
-
-If you need to publish without CI/CD:
-
-```bash
-npm login  # Interactive login
-
-# For development (never do this in CI without secrets)
-npm publish --workspace packages/core --access public
-npm publish --workspace packages/compdi --access public
-```
 
 ## Public vs Private Packages
 
