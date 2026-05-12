@@ -13,7 +13,7 @@ function runFixture(name: string): string {
     throw new Error("Expected transform to return code");
   }
 
-  return result;
+  return result.code;
 }
 
 describe("transformCompdiMacros", () => {
@@ -33,5 +33,16 @@ describe("transformCompdiMacros", () => {
     const output = runFixture("teardown.input.ts");
 
     expect(output).toMatchSnapshot();
+  });
+
+  it("returns a source map for transformed files", () => {
+    const result = transformCompdiMacros(readFixture("lazy-async.input.ts"), "lazy-async.input.ts");
+
+    if (!result) {
+      throw new Error("Expected transform to return code and map");
+    }
+
+    expect(result.map).toBeTruthy();
+    expect(result.map.toString()).toContain("lazy-async.input.ts");
   });
 });

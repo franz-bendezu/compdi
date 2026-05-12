@@ -22,10 +22,7 @@ const compdiPlugin = createUnplugin<CompdiPluginOptions>((options) => ({
       return null;
     }
 
-    return {
-      code: transformed,
-      map: null
-    };
+    return transformed;
   }
 }));
 

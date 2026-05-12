@@ -17,6 +17,10 @@
     "clean": "turbo run clean",
     "test": "turbo run test",
     "publish:verify": "turbo run release:verify",
+    "publish:core": "turbo run release --filter=@compdi/core",
+    "publish:unplugin": "turbo run release --filter=unplugin-compdi",
+    "publish:compdi": "turbo run release --filter=compdi",
+    "publish:remaining": "turbo run release --filter=unplugin-compdi --filter=compdi",
     "publish:ci": "turbo run release:ci",
     "publish:dry-run": "turbo run release:dry-run",
     "publish:local": "turbo run release"
