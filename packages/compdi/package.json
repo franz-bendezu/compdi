@@ -26,6 +26,7 @@
     "typecheck": "tsc --noEmit",
     "test": "echo 'No tests for compdi'",
     "clean": "rm -rf dist",
+    "release:verify": "npm pack --dry-run --json > /dev/null",
     "release": "npm publish",
     "release:dry-run": "npm publish --dry-run",
     "release:ci": "npm publish --provenance"

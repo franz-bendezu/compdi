@@ -73,15 +73,7 @@ jobs:
           git config --local user.name "github-actions[bot]"
       
       - name: Validate package integrity
-        run: |
-          # Verify that key distribution files exist
-          test -f packages/core/dist/index.mjs || exit 1
-          test -f packages/core/dist/index.d.mts || exit 1
-          test -f packages/compdi/dist/index.mjs || exit 1
-          test -f packages/compdi/dist/index.d.mts || exit 1
-          test -f packages/unplugin/dist/index.mjs || exit 1
-          test -f packages/unplugin/dist/index.d.mts || exit 1
-          echo "✓ All distribution files verified"
+        run: npm run publish:verify
 
       - name: Commit release version
         if: ${{ inputs.dry-run == false }}

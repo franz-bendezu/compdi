@@ -16,6 +16,7 @@
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
     "test": "turbo run test",
+    "publish:verify": "turbo run release:verify",
     "publish:ci": "turbo run release:ci",
     "publish:dry-run": "turbo run release:dry-run",
     "publish:local": "turbo run release"
