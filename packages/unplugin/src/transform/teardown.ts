@@ -1,12 +1,14 @@
+import type MagicString from "magic-string";
 import { splitDependencyList } from "./shared";
 import { TEARDOWN_REGEX, resolveTeardownResource } from "./context";
-import type { BindingInfo, Replacement } from "./types";
+import type { BindingInfo } from "./types";
 
 export function collectTeardownReplacements(
   code: string,
   bindings: ReadonlyMap<string, BindingInfo>,
-  out: Replacement[]
-): void {
+  ms: MagicString
+): boolean {
+  let found = false;
 
   for (const match of code.matchAll(TEARDOWN_REGEX)) {
     const name = match[1];
@@ -32,16 +34,17 @@ export function collectTeardownReplacements(
       ];
     });
 
-    out.push({
-      start: match.index ?? 0,
-      end: (match.index ?? 0) + match[0].length,
-      code: [
-        `export const ${name} = async () => {`,
-        `  const tasks = [];`,
-        ...lines,
-        `  await Promise.allSettled(tasks);`,
-        `};`
-      ].join("\n")
-    });
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    ms.overwrite(start, end, [
+      `export const ${name} = async () => {`,
+      `  const tasks = [];`,
+      ...lines,
+      `  await Promise.allSettled(tasks);`,
+      `};`
+    ].join("\n"));
+    found = true;
   }
+
+  return found;
 }

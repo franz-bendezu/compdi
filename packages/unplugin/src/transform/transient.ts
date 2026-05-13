@@ -1,36 +1,32 @@
+import type MagicString from "magic-string";
 import { collectMacroMatches, resolveDependencies } from "./context";
-import type { BindingInfo, Replacement } from "./types";
+import type { BindingInfo } from "./types";
 import { buildInstantiation } from "./shared";
 
 export function collectTransientReplacements(
   code: string,
   bindings: ReadonlyMap<string, BindingInfo>,
-  out: Replacement[]
-): void {
+  ms: MagicString
+): boolean {
+  let found = false;
 
   for (const match of collectMacroMatches(code, "createTransient")) {
     const { name, options, hasAwait, start, end } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
     const rhs = hasAwait ? `await ${expr}` : expr;
-
-    out.push({
-      start,
-      end,
-      code: `export const ${name} = ${rhs};`
-    });
+    ms.overwrite(start, end, `export const ${name} = ${rhs};`);
+    found = true;
   }
 
   for (const match of collectMacroMatches(code, "defineTransient")) {
     const { name, options, start, end } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
-
-    out.push({
-      start,
-      end,
-      code: `export const ${name} = () => ${expr};`
-    });
+    ms.overwrite(start, end, `export const ${name} = () => ${expr};`);
+    found = true;
   }
+
+  return found;
 }
 

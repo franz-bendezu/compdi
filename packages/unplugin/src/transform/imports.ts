@@ -1,12 +1,9 @@
+import type MagicString from "magic-string";
 import { CORE_IMPORT_REGEX } from "./context";
-import type { Replacement } from "./types";
 
-export function collectImportReplacements(code: string, out: Replacement[]): void {
+export function collectImportReplacements(code: string, ms: MagicString): void {
   for (const match of code.matchAll(CORE_IMPORT_REGEX)) {
-    out.push({
-      start: match.index ?? 0,
-      end: (match.index ?? 0) + match[0].length,
-      code: ""
-    });
+    const start = match.index ?? 0;
+    ms.remove(start, start + match[0].length);
   }
 }

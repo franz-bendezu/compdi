@@ -1,5 +1,6 @@
+import type MagicString from "magic-string";
 import { collectMacroMatches, resolveDependencies } from "./context";
-import type { BindingInfo, Replacement } from "./types";
+import type { BindingInfo } from "./types";
 import { buildInstantiation } from "./shared";
 
 /**
@@ -41,8 +42,9 @@ function buildScopedGetter(
 export function collectScopedReplacements(
   code: string,
   bindings: ReadonlyMap<string, BindingInfo>,
-  out: Replacement[]
-): void {
+  ms: MagicString
+): boolean {
+  let found = false;
 
   for (const match of collectMacroMatches(code, "createScoped")) {
     const { name, options, start, end, typeArgs } = match;
@@ -50,15 +52,11 @@ export function collectScopedReplacements(
     const expr = buildInstantiation(options, deps);
     const valueType = typeArgs[0];
     const contextKeyType = typeArgs[1];
-
-    out.push({
-      start,
-      end,
-      code: [
-        buildScopedGetter(name, expr, "__ctx", contextKeyType, valueType),
-        `export const ${name} = __getScoped_${name}(undefined);`
-      ].join("\n")
-    });
+    ms.overwrite(start, end, [
+      buildScopedGetter(name, expr, "__ctx", contextKeyType, valueType),
+      `export const ${name} = __getScoped_${name}(undefined);`
+    ].join("\n"));
+    found = true;
   }
 
   for (const match of collectMacroMatches(code, "defineScoped")) {
@@ -67,14 +65,12 @@ export function collectScopedReplacements(
     const expr = buildInstantiation(options, deps);
     const valueType = typeArgs[0];
     const contextKeyType = typeArgs[1];
-
-    out.push({
-      start,
-      end,
-      code: [
-        buildScopedGetter(name, expr, "__ctx", contextKeyType, valueType),
-        `export const ${name} = __getScoped_${name};`
-      ].join("\n")
-    });
+    ms.overwrite(start, end, [
+      buildScopedGetter(name, expr, "__ctx", contextKeyType, valueType),
+      `export const ${name} = __getScoped_${name};`
+    ].join("\n"));
+    found = true;
   }
+
+  return found;
 }

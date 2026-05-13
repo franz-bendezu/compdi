@@ -1,9 +1,3 @@
-export type Replacement = {
-  start: number;
-  end: number;
-  code: string;
-};
-
 export type BindingKind =
   | "create-singleton"
   | "define-singleton"
