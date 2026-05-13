@@ -1,8 +1,6 @@
 import MagicString from "magic-string";
 import { collectBindings, parseWithOxc } from "./context";
-import { collectAsyncSingletonReplacements } from "./async";
 import { collectImportReplacements } from "./imports";
-import { collectLazyReplacements } from "./lazy";
 import { collectSingletonReplacements } from "./singletons";
 import { collectScopedReplacements } from "./scoped";
 import { collectTeardownReplacements } from "./teardown";
@@ -70,10 +68,7 @@ export function transformCompdiMacros(
   const macroReplacements: Replacement[] = [
     ...collectSingletonReplacements(code, bindings),
     ...collectTransientReplacements(code, bindings),
-    ...collectLazyReplacements(code, bindings),
     ...collectTeardownReplacements(code, bindings),
-    ...collectAsyncSingletonReplacements(code, bindings, "create"),
-    ...collectAsyncSingletonReplacements(code, bindings, "define"),
     ...collectScopedReplacements(code, bindings)
   ];
 
