@@ -11,7 +11,12 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./macros": "./dist/macros.mjs",
-    "./plugin": "./dist/plugin.mjs",
+    "./plugin": "./dist/plugin/index.mjs",
+    "./plugin/esbuild": "./dist/plugin/esbuild.mjs",
+    "./plugin/rolldown": "./dist/plugin/rolldown.mjs",
+    "./plugin/rollup": "./dist/plugin/rollup.mjs",
+    "./plugin/rspack": "./dist/plugin/rspack.mjs",
+    "./plugin/vite": "./dist/plugin/vite.mjs",
     "./package.json": "./package.json"
   },
   "repository": {
