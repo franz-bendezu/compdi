@@ -2,14 +2,12 @@
 export {
   createSingleton,
   defineSingleton,
+  createTransient,
   defineTransient,
-  createLazySingleton,
-  defineLazySingleton,
-  createAsyncSingleton,
-  defineAsyncSingleton,
+  createScoped,
+  defineScoped,
   defineAppTeardown,
-  type Constructor,
-  type AsyncFactory,
+  type DiOptions,
 } from "@compdi/core";
 
 // Reexport unplugin-compdi plugin

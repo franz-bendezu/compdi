@@ -18,8 +18,8 @@ export function collectTeardownReplacements(
 
       return [
         `  const ${localName} = ${resolved.awaitExpression ? `await ${resolved.expression}` : resolved.expression};`,
-        `  if (${localName}?.[Symbol.asyncDispose]) tasks.push(${localName}[Symbol.asyncDispose]());`,
-        `  else if (${localName}?.[Symbol.dispose]) {`,
+        `  if (${localName} != null && Symbol.asyncDispose in ${localName}) tasks.push(${localName}[Symbol.asyncDispose]());`,
+        `  else if (${localName} != null && Symbol.dispose in ${localName}) {`,
         `    try {`,
         `      ${localName}[Symbol.dispose]();`,
         `    } catch (error) {`,

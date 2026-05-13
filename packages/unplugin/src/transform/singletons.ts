@@ -1,9 +1,6 @@
-import {
-  CREATE_SINGLETON_REGEX,
-  DEFINE_SINGLETON_REGEX,
-  resolveDependencies
-} from "./context";
+import { collectMacroMatches, resolveDependencies } from "./context";
 import type { BindingInfo, Replacement } from "./types";
+import { buildInstantiation, buildTypeAnnotation } from "./shared";
 
 export function collectSingletonReplacements(
   code: string,
@@ -11,33 +8,60 @@ export function collectSingletonReplacements(
 ): Replacement[] {
   const replacements: Replacement[] = [];
 
-  for (const match of code.matchAll(CREATE_SINGLETON_REGEX)) {
-    const name = match[1];
-    const target = match[2].trim();
-    const deps = resolveDependencies(match[3], bindings, "sync");
+  for (const match of collectMacroMatches(code, "createSingleton")) {
+    const { name, options, hasAwait, start, end } = match;
+    const deps = resolveDependencies(options.deps, bindings);
+    const expr = buildInstantiation(options, deps);
+    const rhs = hasAwait ? `await ${expr}` : expr;
 
     replacements.push({
-      start: match.index ?? 0,
-      end: (match.index ?? 0) + match[0].length,
-      code: `export const ${name} = new ${target}(${deps});`
+      start,
+      end,
+      code: `export const ${name} = ${rhs};`
     });
   }
 
-  for (const match of code.matchAll(DEFINE_SINGLETON_REGEX)) {
-    const name = match[1];
-    const target = match[2].trim();
-    const deps = resolveDependencies(match[3], bindings, "sync");
+  for (const match of collectMacroMatches(code, "defineSingleton")) {
+    const { name, options, start, end } = match;
     const binding = bindings.get(name);
-    if (!binding) {
-      continue;
-    }
+    if (!binding) continue;
 
-    replacements.push({
-      start: match.index ?? 0,
-      end: (match.index ?? 0) + match[0].length,
-      code: `const ${binding.instanceName} = new ${target}(${deps});\nexport const ${name} = () => ${binding.instanceName};`
-    });
+    const deps = resolveDependencies(options.deps, bindings);
+
+    if (options.lazy) {
+      // Lazy: instantiate on first access
+      const expr = buildInstantiation(options, deps);
+      const typeAnnotation = buildTypeAnnotation(options);
+      const typedDecl = typeAnnotation
+        ? `let ${binding.instanceName}: ${typeAnnotation} | null = null;`
+        : `let ${binding.instanceName} = null;`;
+      replacements.push({
+        start,
+        end,
+        code: [
+          typedDecl,
+          `const ${binding.peekName} = () => ${binding.instanceName};`,
+          `export const ${name} = () => {`,
+          `  if (!${binding.instanceName}) ${binding.instanceName} = ${expr};`,
+          `  return ${binding.instanceName};`,
+          `};`
+        ].join("\n")
+      });
+    } else {
+      // Eager: instantiate immediately
+      const expr = buildInstantiation(options, deps);
+      const typeAnnotation = buildTypeAnnotation(options);
+      const typedDecl = typeAnnotation
+        ? `const ${binding.instanceName}: ${typeAnnotation} = ${expr};`
+        : `const ${binding.instanceName} = ${expr};`;
+      replacements.push({
+        start,
+        end,
+        code: `${typedDecl}\nexport const ${name} = () => ${binding.instanceName};`
+      });
+    }
   }
 
   return replacements;
 }
+

@@ -1,5 +1,6 @@
-import { TRANSIENT_REGEX, resolveDependencies } from "./context";
+import { collectMacroMatches, resolveDependencies } from "./context";
 import type { BindingInfo, Replacement } from "./types";
+import { buildInstantiation } from "./shared";
 
 export function collectTransientReplacements(
   code: string,
@@ -7,17 +8,31 @@ export function collectTransientReplacements(
 ): Replacement[] {
   const replacements: Replacement[] = [];
 
-  for (const match of code.matchAll(TRANSIENT_REGEX)) {
-    const name = match[1];
-    const target = match[2].trim();
-    const deps = resolveDependencies(match[3], bindings, "sync");
+  for (const match of collectMacroMatches(code, "createTransient")) {
+    const { name, options, hasAwait, start, end } = match;
+    const deps = resolveDependencies(options.deps, bindings);
+    const expr = buildInstantiation(options, deps);
+    const rhs = hasAwait ? `await ${expr}` : expr;
 
     replacements.push({
-      start: match.index ?? 0,
-      end: (match.index ?? 0) + match[0].length,
-      code: `export const ${name} = () => new ${target}(${deps});`
+      start,
+      end,
+      code: `export const ${name} = ${rhs};`
+    });
+  }
+
+  for (const match of collectMacroMatches(code, "defineTransient")) {
+    const { name, options, start, end } = match;
+    const deps = resolveDependencies(options.deps, bindings);
+    const expr = buildInstantiation(options, deps);
+
+    replacements.push({
+      start,
+      end,
+      code: `export const ${name} = () => ${expr};`
     });
   }
 
   return replacements;
 }
+

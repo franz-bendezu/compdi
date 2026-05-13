@@ -4,6 +4,7 @@ import { collectAsyncSingletonReplacements } from "./async";
 import { collectImportReplacements } from "./imports";
 import { collectLazyReplacements } from "./lazy";
 import { collectSingletonReplacements } from "./singletons";
+import { collectScopedReplacements } from "./scoped";
 import { collectTeardownReplacements } from "./teardown";
 import { collectTransientReplacements } from "./transient";
 import type { Replacement } from "./types";
@@ -28,6 +29,7 @@ function applyReplacements(
   }
 
   const ms = new MagicString(code);
+
   const sorted = [...replacements].sort((left, right) => right.start - left.start);
 
   for (const replacement of sorted) {
@@ -66,7 +68,8 @@ export function transformCompdiMacros(
     ...collectLazyReplacements(code, bindings),
     ...collectTeardownReplacements(code, bindings),
     ...collectAsyncSingletonReplacements(code, bindings, "create"),
-    ...collectAsyncSingletonReplacements(code, bindings, "define")
+    ...collectAsyncSingletonReplacements(code, bindings, "define"),
+    ...collectScopedReplacements(code, bindings)
   ];
 
   if (replacements.length === 0) {
@@ -75,3 +78,4 @@ export function transformCompdiMacros(
 
   return applyReplacements(code, id, replacements);
 }
+

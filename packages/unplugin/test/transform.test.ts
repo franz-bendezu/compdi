@@ -10,39 +10,98 @@ function runFixture(name: string): string {
   const result = transformCompdiMacros(readFixture(name), name);
 
   if (!result) {
-    throw new Error("Expected transform to return code");
+    throw new Error(`Expected transform to return code for fixture: ${name}`);
   }
 
   return result.code;
 }
 
+function snapshot(name: string): string {
+  return `./__snapshots__/${name}.output.ts`;
+}
+
 describe("transformCompdiMacros", () => {
-  it("rewrites singleton and transient macros", () => {
-    const output = runFixture("singleton-transient.input.ts");
+  describe("singleton", () => {
+    describe("createSingleton", () => {
+      it("instantiates a class target", async () => {
+        await expect(runFixture("singleton/create-class.input.ts"))
+          .toMatchFileSnapshot(snapshot("singleton/create-class"));
+      });
 
-    expect(output).toMatchSnapshot();
+      it("invokes a sync factory", async () => {
+        await expect(runFixture("singleton/create-factory.input.ts"))
+          .toMatchFileSnapshot(snapshot("singleton/create-factory"));
+      });
+
+      it("awaits an async factory when prefixed with await", async () => {
+        await expect(runFixture("singleton/create-async.input.ts"))
+          .toMatchFileSnapshot(snapshot("singleton/create-async"));
+      });
+    });
+
+    describe("defineSingleton", () => {
+      it("creates an eager getter for a class target", async () => {
+        await expect(runFixture("singleton/define-eager-class.input.ts"))
+          .toMatchFileSnapshot(snapshot("singleton/define-eager-class"));
+      });
+
+      it("creates an eager getter for a factory", async () => {
+        await expect(runFixture("singleton/define-eager-factory.input.ts"))
+          .toMatchFileSnapshot(snapshot("singleton/define-eager-factory"));
+      });
+
+      it("creates a lazy getter when lazy: true", async () => {
+        await expect(runFixture("singleton/define-lazy.input.ts"))
+          .toMatchFileSnapshot(snapshot("singleton/define-lazy"));
+      });
+    });
   });
 
-  it("rewrites lazy and async singleton macros", () => {
-    const output = runFixture("lazy-async.input.ts");
+  describe("transient", () => {
+    describe("createTransient", () => {
+      it("returns the instantiation directly", async () => {
+        await expect(runFixture("transient/create.input.ts"))
+          .toMatchFileSnapshot(snapshot("transient/create"));
+      });
+    });
 
-    expect(output).toMatchSnapshot();
+    describe("defineTransient", () => {
+      it("returns a factory function that creates a new instance each call", async () => {
+        await expect(runFixture("transient/define.input.ts"))
+          .toMatchFileSnapshot(snapshot("transient/define"));
+      });
+    });
   });
 
-  it("rewrites teardown macros with awaited async resources", () => {
-    const output = runFixture("teardown.input.ts");
-
-    expect(output).toMatchSnapshot();
+  describe("scoped", () => {
+    describe("defineScoped", () => {
+      it("returns a context-keyed accessor backed by a registry", async () => {
+        await expect(runFixture("scoped/define.input.ts"))
+          .toMatchFileSnapshot(snapshot("scoped/define"));
+      });
+    });
   });
 
-  it("returns a source map for transformed files", () => {
-    const result = transformCompdiMacros(readFixture("lazy-async.input.ts"), "lazy-async.input.ts");
+  describe("teardown", () => {
+    describe("defineAppTeardown", () => {
+      it("generates an async disposal function for registered resources", async () => {
+        await expect(runFixture("teardown/basic.input.ts"))
+          .toMatchFileSnapshot(snapshot("teardown/basic"));
+      });
+    });
+  });
+
+  it("generates a source map for transformed files", () => {
+    const result = transformCompdiMacros(
+      readFixture("singleton/define-lazy.input.ts"),
+      "singleton/define-lazy.input.ts"
+    );
 
     if (!result) {
       throw new Error("Expected transform to return code and map");
     }
 
     expect(result.map).toBeTruthy();
-    expect(result.map.toString()).toContain("lazy-async.input.ts");
+    expect(result.map.toString()).toContain("singleton/define-lazy.input.ts");
   });
 });

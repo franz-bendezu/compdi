@@ -7,15 +7,14 @@ export type Replacement = {
 export type BindingKind =
   | "create-singleton"
   | "define-singleton"
-  | "create-lazy-singleton"
-  | "define-lazy-singleton"
-  | "create-async-singleton"
-  | "define-async-singleton";
+  | "define-singleton-lazy"
+  | "create-transient"
+  | "define-transient"
+  | "create-scoped"
+  | "define-scoped";
 
 export type BindingInfo = {
   kind: BindingKind;
   instanceName: string;
-  getterName?: string;
   peekName?: string;
-  promiseName?: string;
 };
