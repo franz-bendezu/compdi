@@ -42,27 +42,36 @@ export const useCacheClient = () => {
 export const teardown = async () => {
   const tasks = [];
   const __resource_0 = db;
-  if (__resource_0 != null && Symbol.asyncDispose in __resource_0) tasks.push(__resource_0[Symbol.asyncDispose]());
-  else if (__resource_0 != null && Symbol.dispose in __resource_0) {
+  if (__resource_0 != null && Symbol.asyncDispose in __resource_0) {
+    // @ts-ignore
+    tasks.push(__resource_0[Symbol.asyncDispose]());
+  } else if (__resource_0 != null && Symbol.dispose in __resource_0) {
     try {
+      // @ts-ignore
       __resource_0[Symbol.dispose]();
     } catch (error) {
       tasks.push(Promise.reject(error));
     }
   }
   const __resource_1 = __useConnection;
-  if (__resource_1 != null && Symbol.asyncDispose in __resource_1) tasks.push(__resource_1[Symbol.asyncDispose]());
-  else if (__resource_1 != null && Symbol.dispose in __resource_1) {
+  if (__resource_1 != null && Symbol.asyncDispose in __resource_1) {
+    // @ts-ignore
+    tasks.push(__resource_1[Symbol.asyncDispose]());
+  } else if (__resource_1 != null && Symbol.dispose in __resource_1) {
     try {
+      // @ts-ignore
       __resource_1[Symbol.dispose]();
     } catch (error) {
       tasks.push(Promise.reject(error));
     }
   }
   const __resource_2 = __peek_useCacheClient();
-  if (__resource_2 != null && Symbol.asyncDispose in __resource_2) tasks.push(__resource_2[Symbol.asyncDispose]());
-  else if (__resource_2 != null && Symbol.dispose in __resource_2) {
+  if (__resource_2 != null && Symbol.asyncDispose in __resource_2) {
+    // @ts-ignore
+    tasks.push(__resource_2[Symbol.asyncDispose]());
+  } else if (__resource_2 != null && Symbol.dispose in __resource_2) {
     try {
+      // @ts-ignore
       __resource_2[Symbol.dispose]();
     } catch (error) {
       tasks.push(Promise.reject(error));

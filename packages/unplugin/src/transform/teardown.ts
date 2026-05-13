@@ -18,9 +18,12 @@ export function collectTeardownReplacements(
 
       return [
         `  const ${localName} = ${resolved.awaitExpression ? `await ${resolved.expression}` : resolved.expression};`,
-        `  if (${localName} != null && Symbol.asyncDispose in ${localName}) tasks.push(${localName}[Symbol.asyncDispose]());`,
-        `  else if (${localName} != null && Symbol.dispose in ${localName}) {`,
+        `  if (${localName} != null && Symbol.asyncDispose in ${localName}) {`,
+        `    // @ts-ignore`,
+        `    tasks.push(${localName}[Symbol.asyncDispose]());`,
+        `  } else if (${localName} != null && Symbol.dispose in ${localName}) {`,
         `    try {`,
+        `      // @ts-ignore`,
         `      ${localName}[Symbol.dispose]();`,
         `    } catch (error) {`,
         `      tasks.push(Promise.reject(error));`,
