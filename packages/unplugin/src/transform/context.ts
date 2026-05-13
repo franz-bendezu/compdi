@@ -2,7 +2,7 @@ import { parseSync } from "oxc-parser";
 import { findMatchingParen, splitDependencyList } from "./shared";
 import type { BindingInfo, BindingKind } from "./types";
 
-export const CORE_IMPORT_REGEX = /import\s*{[^}]*}\s*from\s*["'](?:@compdi\/core|compdi)["'];?\s*/g;
+export const CORE_IMPORT_REGEX = /import\s*{[^}]*}\s*from\s*["'](?:@compdi\/core|compdi\/macros|compdi)["'];?\s*/g;
 export const TEARDOWN_REGEX =
   /export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*defineAppTeardown\(\s*\[([\s\S]*?)\]\s*\)\s*;?/g;
 

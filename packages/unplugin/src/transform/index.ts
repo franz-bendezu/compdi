@@ -52,7 +52,13 @@ export function transformCompdiMacros(
     return null;
   }
 
-  if (!code.includes("@compdi/core") && !code.includes('"compdi"') && !code.includes("'compdi'")) {
+  if (
+    !code.includes("@compdi/core") &&
+    !code.includes('"compdi/macros"') &&
+    !code.includes("'compdi/macros'") &&
+    !code.includes('"compdi"') &&
+    !code.includes("'compdi'")
+  ) {
     return null;
   }
 
@@ -61,8 +67,7 @@ export function transformCompdiMacros(
   }
 
   const bindings = collectBindings(code);
-  const replacements: Replacement[] = [
-    ...collectImportReplacements(code),
+  const macroReplacements: Replacement[] = [
     ...collectSingletonReplacements(code, bindings),
     ...collectTransientReplacements(code, bindings),
     ...collectLazyReplacements(code, bindings),
@@ -71,6 +76,13 @@ export function transformCompdiMacros(
     ...collectAsyncSingletonReplacements(code, bindings, "define"),
     ...collectScopedReplacements(code, bindings)
   ];
+
+  // Only erase the import when there are actual macro calls to replace.
+  // Without this guard, barrel re-export files (e.g. compdi/macros dist) would
+  // have their import erased, leaving dangling export references.
+  const replacements: Replacement[] = macroReplacements.length > 0
+    ? [...collectImportReplacements(code), ...macroReplacements]
+    : macroReplacements;
 
   if (replacements.length === 0) {
     return null;
