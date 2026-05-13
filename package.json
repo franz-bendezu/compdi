@@ -1,6 +1,6 @@
 {
   "name": "compdi-monorepo",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Compdi monorepo powered by Turborepo",
   "license": "MIT",
