@@ -45,10 +45,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "clean": "rm -rf dist",
-    "release:verify": "npm pack --dry-run --json > /dev/null",
-    "release": "npm publish",
-    "release:dry-run": "npm publish --dry-run",
-    "release:ci": "npm publish --provenance"
+    "release:verify": "pnpm pack --dry-run --json > /dev/null",
+    "release": "pnpm publish",
+    "release:dry-run": "pnpm publish --dry-run",
+    "release:ci": "pnpm publish --provenance"
   },
   "dependencies": {
     "magic-string": "^0.30.11",

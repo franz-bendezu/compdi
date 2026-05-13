@@ -30,14 +30,14 @@
     "typecheck": "tsc --noEmit",
     "test": "echo 'No tests for compdi'",
     "clean": "rm -rf dist",
-    "release:verify": "npm pack --dry-run --json > /dev/null",
-    "release": "npm publish",
-    "release:dry-run": "npm publish --dry-run",
-    "release:ci": "npm publish --provenance"
+    "release:verify": "pnpm pack --dry-run --json > /dev/null",
+    "release": "pnpm publish",
+    "release:dry-run": "pnpm publish --dry-run",
+    "release:ci": "pnpm publish --provenance"
   },
   "dependencies": {
-    "@compdi/core": "*",
-    "unplugin-compdi": "*"
+    "@compdi/core": "workspace:^",
+    "unplugin-compdi": "workspace:^"
   },
   "devDependencies": {
     "tsdown": "^0.22.0",

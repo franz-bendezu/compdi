@@ -4,11 +4,7 @@
   "private": true,
   "description": "Compdi monorepo powered by Turborepo",
   "license": "MIT",
-  "packageManager": "npm@10.9.0",
-  "workspaces": [
-    "packages/*",
-    "playground"
-  ],
+  "packageManager": "pnpm@11.1.1",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

@@ -40,32 +40,34 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           registry-url: 'https://registry.npmjs.org'
-          cache: npm
+          cache: pnpm
       
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Bump release version
         id: version
         run: |
-          npm version "${{ inputs.version-bump }}" \
-            --workspaces \
-            --include-workspace-root \
-            --no-git-tag-version
-
+          npm version "${{ inputs.version-bump }}" --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
+          for dir in packages/core packages/compdi packages/unplugin playground; do
+            npm --prefix "$dir" version "$VERSION" --no-git-tag-version
+          done
           echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
       
       - name: Run build
-        run: npm run build
+        run: pnpm run build
       
       - name: Run typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
       
       - name: Configure Git
         run: |
@@ -73,13 +75,13 @@ jobs:
           git config --local user.name "github-actions[bot]"
       
       - name: Validate package integrity
-        run: npm run publish:verify
+        run: pnpm run publish:verify
 
       - name: Commit release version
         if: ${{ inputs.dry-run == false }}
         run: |
           VERSION="${{ steps.version.outputs.value }}"
-          git add package.json package-lock.json packages/*/package.json playground/package.json
+          git add package.json pnpm-lock.yaml packages/*/package.json playground/package.json
           git commit -m "chore: release v${VERSION}"
 
       - name: Publish to npm (Dry Run)
@@ -98,9 +100,9 @@ jobs:
           # setup-node's temp .npmrc sets _authToken=${NODE_AUTH_TOKEN} which expands to empty
           # and overrides the OIDC-obtained token on the PUT request. Remove it first.
           rm -f "$NPM_CONFIG_USERCONFIG"
-          npm publish --workspace packages/core --access public --provenance
-          npm publish --workspace packages/compdi --access public --provenance
-          npm publish --workspace packages/unplugin --access public --provenance
+          pnpm publish --filter @compdi/core --access public --provenance
+          pnpm publish --filter compdi --access public --provenance
+          pnpm publish --filter unplugin-compdi --access public --provenance
           echo "✓ Packages published successfully"
 
       - name: Push release commit
