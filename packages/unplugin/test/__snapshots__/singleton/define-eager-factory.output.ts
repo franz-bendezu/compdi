@@ -5,11 +5,11 @@ type AppLogger = { log(msg: string): void };
 type DbConnection = { dsn: string; connected: boolean };
 
 class Config {
-  constructor(readonly dsn: string) {}
+  constructor(readonly dsn: string) { }
 }
 
 class Logger {
-  constructor(readonly config: AppConfig) {}
+  constructor(readonly config: AppConfig) { }
   log(msg: string) { console.log(msg); }
 }
 
@@ -19,5 +19,13 @@ async function openConnection(config: AppConfig, logger: AppLogger): Promise<DbC
 
 export const config = new Config("postgres://localhost/app");
 export const logger = new Logger(config);
+
+// Pattern A: inferred, no await — getter holds the Promise, caller must await the result
 const __useConnection: ReturnType<typeof openConnection> = (openConnection)(config, logger);
 export const useConnection = () => __useConnection;
+const connection: Promise<DbConnection> = useConnection();
+
+// Pattern B: explicit <T>, with await — factory resolved at init, getter is synchronous
+const __useConnection2: Awaited<ReturnType<typeof openConnection>> = await (openConnection)(config, logger);
+export const useConnection2 = () => __useConnection2;
+const connection2: DbConnection = useConnection2();

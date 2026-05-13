@@ -93,12 +93,13 @@ export function splitTopLevelArgs(source: string): [string, string] | null {
  * If `factory` is present → `Awaited<ReturnType<typeof factory>>`.
  * Returns empty string when neither is known.
  */
-export function buildTypeAnnotation(options: ParsedDiOptions): string {
+export function buildTypeAnnotation(options: ParsedDiOptions, awaited = false): string {
   if (options.target) return options.target;
   if (options.factory) {
     // Only simple identifiers are safe to reference with typeof
     if (/^[A-Za-z_$][\w$]*$/.test(options.factory)) {
-      return `ReturnType<typeof ${options.factory}>`;
+      const inner = `ReturnType<typeof ${options.factory}>`;
+      return awaited ? `Awaited<${inner}>` : inner;
     }
   }
   return "";

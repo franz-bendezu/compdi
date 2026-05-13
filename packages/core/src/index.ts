@@ -50,13 +50,14 @@ export function createSingleton<T>(options: DiOptions<T, any>): T | Promise<T> {
   return macroNotTransformed("createSingleton");
 }
 
-// defineSingleton: async factory -> () => Promise<T>, class target -> () => T, sync factory -> () => T
+// defineSingleton:
+//   inferred async factory  ->  () => ReturnType<F>  (getter holds the Promise; no await on call site)
+//   inferred sync factory   ->  () => ReturnType<F>
+//   explicit <T> async      ->  Promise<() => T>     (must await call site; getter is synchronous)
+//   explicit <T> sync       ->  () => T
 export function defineSingleton<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>>; lazy?: boolean }
 ): () => InstanceType<C>;
-export function defineSingleton<F extends (...args: any[]) => Promise<any>>(
-  options: { factory: F; deps?: NoInfer<Parameters<F>>; lazy?: boolean }
-): () => ReturnType<F>;
 export function defineSingleton<F extends (...args: any[]) => any>(
   options: { factory: F; deps?: NoInfer<Parameters<F>>; lazy?: boolean }
 ): () => ReturnType<F>;
@@ -65,11 +66,11 @@ export function defineSingleton<T>(
 ): () => T;
 export function defineSingleton<T>(
   options: { factory: (...args: any[]) => Promise<T>; deps?: readonly any[]; lazy?: boolean }
-): () => Promise<T>;
+): Promise<() => T>;
 export function defineSingleton<T>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[]; lazy?: boolean }
 ): () => T;
-export function defineSingleton<T>(options: DiOptions<T, any>): () => T | Promise<T> {
+export function defineSingleton<T>(options: DiOptions<T, any>): (() => T) | Promise<() => T> {
   void options;
   return macroNotTransformed("defineSingleton");
 }

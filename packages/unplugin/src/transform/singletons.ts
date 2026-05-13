@@ -22,7 +22,7 @@ export function collectSingletonReplacements(
   }
 
   for (const match of collectMacroMatches(code, "defineSingleton")) {
-    const { name, options, start, end } = match;
+    const { name, options, hasAwait, start, end } = match;
     const binding = bindings.get(name);
     if (!binding) continue;
 
@@ -48,12 +48,14 @@ export function collectSingletonReplacements(
         ].join("\n")
       });
     } else {
-      // Eager: instantiate immediately
+      // Eager: respect hasAwait — user writes `await defineSingleton(...)` to resolve the factory
+      // at init time (getter becomes sync); omitting await stores the raw return value (e.g. Promise).
       const expr = buildInstantiation(options, deps);
-      const typeAnnotation = buildTypeAnnotation(options);
+      const rhs = hasAwait ? `await ${expr}` : expr;
+      const typeAnnotation = buildTypeAnnotation(options, hasAwait);
       const typedDecl = typeAnnotation
-        ? `const ${binding.instanceName}: ${typeAnnotation} = ${expr};`
-        : `const ${binding.instanceName} = ${expr};`;
+        ? `const ${binding.instanceName}: ${typeAnnotation} = ${rhs};`
+        : `const ${binding.instanceName} = ${rhs};`;
       replacements.push({
         start,
         end,
