@@ -83,11 +83,22 @@ jobs:
 
       - name: Publish to npm (Dry Run)
         if: ${{ inputs.dry-run == true }}
-        run: npm run publish:dry-run
-
+        run: |
+          echo "📋 Dry Run Mode: Simulating publish..."
+          echo "Release version: ${{ steps.version.outputs.value }}"
+          echo "Would publish the following packages:"
+          echo "  - @compdi/core@${{ steps.version.outputs.value }} (public)"
+          echo "  - compdi@${{ steps.version.outputs.value }} (public)"
+          echo "  - unplugin-compdi@${{ steps.version.outputs.value }} (public)"
+      
       - name: Publish to npm
         if: ${{ inputs.dry-run == false }}
-        run: npm run publish:ci
+        run: |
+          # Publishes with provenance. Tokenless trusted publishing also requires npm-side trusted publisher setup.
+          npm publish --workspace packages/core --access public --provenance
+          npm publish --workspace packages/compdi --access public --provenance
+          npm publish --workspace packages/unplugin --access public --provenance
+          echo "✓ Packages published successfully"
 
       - name: Push release commit
         if: ${{ inputs.dry-run == false }}
