@@ -81,6 +81,7 @@ jobs:
           VERSION="${{ steps.version.outputs.value }}"
           git add package.json package-lock.json packages/*/package.json playground/package.json
           git commit -m "chore: release v${VERSION}"
+          git push origin HEAD:main
 
       - name: Publish to npm (Dry Run)
         if: ${{ inputs.dry-run == true }}
