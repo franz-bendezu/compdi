@@ -17,20 +17,11 @@ function applyReplacements(
   id: string,
   replacements: Replacement[]
 ): TransformCompdiMacrosResult {
-  if (replacements.length === 0) {
-    const ms = new MagicString(code);
-
-    return {
-      code,
-      map: ms.generateMap({ hires: true, source: id, includeContent: true })
-    };
-  }
-
   const ms = new MagicString(code);
 
-  const sorted = [...replacements].sort((left, right) => right.start - left.start);
+  replacements.sort((left, right) => right.start - left.start);
 
-  for (const replacement of sorted) {
+  for (const replacement of replacements) {
     ms.overwrite(replacement.start, replacement.end, replacement.code);
   }
 
@@ -65,18 +56,17 @@ export function transformCompdiMacros(
   }
 
   const bindings = collectBindings(code);
-  const macroReplacements: Replacement[] = [
-    ...collectSingletonReplacements(code, bindings),
-    ...collectTransientReplacements(code, bindings),
-    ...collectTeardownReplacements(code, bindings),
-    ...collectScopedReplacements(code, bindings)
-  ];
+  const macroReplacements: Replacement[] = [];
+  collectSingletonReplacements(code, bindings, macroReplacements);
+  collectTransientReplacements(code, bindings, macroReplacements);
+  collectTeardownReplacements(code, bindings, macroReplacements);
+  collectScopedReplacements(code, bindings, macroReplacements);
 
   // Only erase the import when there are actual macro calls to replace.
   // Without this guard, barrel re-export files (e.g. compdi/macros dist) would
   // have their import erased, leaving dangling export references.
   const replacements: Replacement[] = macroReplacements.length > 0
-    ? [...collectImportReplacements(code), ...macroReplacements]
+    ? (collectImportReplacements(code, macroReplacements), macroReplacements)
     : macroReplacements;
 
   if (replacements.length === 0) {

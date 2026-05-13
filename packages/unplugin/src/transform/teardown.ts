@@ -4,9 +4,9 @@ import type { BindingInfo, Replacement } from "./types";
 
 export function collectTeardownReplacements(
   code: string,
-  bindings: ReadonlyMap<string, BindingInfo>
-): Replacement[] {
-  const replacements: Replacement[] = [];
+  bindings: ReadonlyMap<string, BindingInfo>,
+  out: Replacement[]
+): void {
 
   for (const match of code.matchAll(TEARDOWN_REGEX)) {
     const name = match[1];
@@ -32,7 +32,7 @@ export function collectTeardownReplacements(
       ];
     });
 
-    replacements.push({
+    out.push({
       start: match.index ?? 0,
       end: (match.index ?? 0) + match[0].length,
       code: [
@@ -44,6 +44,4 @@ export function collectTeardownReplacements(
       ].join("\n")
     });
   }
-
-  return replacements;
 }

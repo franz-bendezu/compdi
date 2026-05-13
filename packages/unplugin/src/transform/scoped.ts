@@ -40,9 +40,9 @@ function buildScopedGetter(
 
 export function collectScopedReplacements(
   code: string,
-  bindings: ReadonlyMap<string, BindingInfo>
-): Replacement[] {
-  const replacements: Replacement[] = [];
+  bindings: ReadonlyMap<string, BindingInfo>,
+  out: Replacement[]
+): void {
 
   for (const match of collectMacroMatches(code, "createScoped")) {
     const { name, options, start, end, typeArgs } = match;
@@ -51,7 +51,7 @@ export function collectScopedReplacements(
     const valueType = typeArgs[0];
     const contextKeyType = typeArgs[1];
 
-    replacements.push({
+    out.push({
       start,
       end,
       code: [
@@ -68,7 +68,7 @@ export function collectScopedReplacements(
     const valueType = typeArgs[0];
     const contextKeyType = typeArgs[1];
 
-    replacements.push({
+    out.push({
       start,
       end,
       code: [
@@ -77,6 +77,4 @@ export function collectScopedReplacements(
       ].join("\n")
     });
   }
-
-  return replacements;
 }

@@ -4,9 +4,9 @@ import { buildInstantiation } from "./shared";
 
 export function collectTransientReplacements(
   code: string,
-  bindings: ReadonlyMap<string, BindingInfo>
-): Replacement[] {
-  const replacements: Replacement[] = [];
+  bindings: ReadonlyMap<string, BindingInfo>,
+  out: Replacement[]
+): void {
 
   for (const match of collectMacroMatches(code, "createTransient")) {
     const { name, options, hasAwait, start, end } = match;
@@ -14,7 +14,7 @@ export function collectTransientReplacements(
     const expr = buildInstantiation(options, deps);
     const rhs = hasAwait ? `await ${expr}` : expr;
 
-    replacements.push({
+    out.push({
       start,
       end,
       code: `export const ${name} = ${rhs};`
@@ -26,13 +26,11 @@ export function collectTransientReplacements(
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
 
-    replacements.push({
+    out.push({
       start,
       end,
       code: `export const ${name} = () => ${expr};`
     });
   }
-
-  return replacements;
 }
 

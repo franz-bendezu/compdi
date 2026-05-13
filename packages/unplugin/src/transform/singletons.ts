@@ -4,9 +4,9 @@ import { buildInstantiation, buildTypeAnnotation } from "./shared";
 
 export function collectSingletonReplacements(
   code: string,
-  bindings: ReadonlyMap<string, BindingInfo>
-): Replacement[] {
-  const replacements: Replacement[] = [];
+  bindings: ReadonlyMap<string, BindingInfo>,
+  out: Replacement[]
+): void {
 
   for (const match of collectMacroMatches(code, "createSingleton")) {
     const { name, options, hasAwait, start, end } = match;
@@ -14,7 +14,7 @@ export function collectSingletonReplacements(
     const expr = buildInstantiation(options, deps);
     const rhs = hasAwait ? `await ${expr}` : expr;
 
-    replacements.push({
+    out.push({
       start,
       end,
       code: `export const ${name} = ${rhs};`
@@ -35,7 +35,7 @@ export function collectSingletonReplacements(
       const typedDecl = typeAnnotation
         ? `let ${binding.instanceName}: ${typeAnnotation} | null = null;`
         : `let ${binding.instanceName} = null;`;
-      replacements.push({
+      out.push({
         start,
         end,
         code: [
@@ -56,14 +56,12 @@ export function collectSingletonReplacements(
       const typedDecl = typeAnnotation
         ? `const ${binding.instanceName}: ${typeAnnotation} = ${rhs};`
         : `const ${binding.instanceName} = ${rhs};`;
-      replacements.push({
+      out.push({
         start,
         end,
         code: `${typedDecl}\nexport const ${name} = () => ${binding.instanceName};`
       });
     }
   }
-
-  return replacements;
 }
 
