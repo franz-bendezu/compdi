@@ -13,11 +13,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@compdi/core": "*"
+    "compdi": "*"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
-    "unplugin-compdi": "*",
     "vite": "^8.0.11"
   }
 }

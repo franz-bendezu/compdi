@@ -3,17 +3,16 @@
   "version": "0.4.0",
   "type": "module",
   "description": "Compdi DI runtime and compiler - complete package",
-  "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "files": [
     "dist",
     "README.md"
   ],
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    }
+    ".": "./dist/index.mjs",
+    "./macros": "./dist/macros.mjs",
+    "./plugin": "./dist/plugin.mjs",
+    "./package.json": "./package.json"
   },
   "repository": {
     "type": "git",

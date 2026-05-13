@@ -4,7 +4,7 @@ import {
   defineAppTeardown,
   createSingleton,
   defineTransient
-} from "@compdi/core";
+} from "compdi/macros";
 
 class Database {
   private static nextId = 1;

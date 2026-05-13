@@ -7,7 +7,7 @@ export type CompdiPluginOptions = {
 
 const defaultInclude = /\.[cm]?[jt]sx?$/;
 
-const compdiPlugin = createUnplugin<CompdiPluginOptions>((options) => ({
+const compdiPlugin = createUnplugin((options?: CompdiPluginOptions) => ({
   name: "unplugin-compdi",
   enforce: "pre",
   transform(code, id) {
