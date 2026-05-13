@@ -15,8 +15,9 @@ npm install compdi
 ### 1. Add the plugin
 
 ```ts
+// vite.config.ts
 import { defineConfig } from "vite";
-import { vitePlugin } from "compdi";
+import vitePlugin from "compdi/plugin/vite";
 
 export default defineConfig({
   plugins: [vitePlugin()],
@@ -28,9 +29,9 @@ export default defineConfig({
 ```ts
 import {
   createSingleton,
-  createLazySingleton,
+  defineSingleton,
   defineTransient,
-} from "compdi";
+} from "compdi/macros";
 
 class Database {}
 
@@ -42,45 +43,43 @@ class Analytics {
   constructor(private readonly db: Database) {}
 }
 
-const db = createSingleton(Database, []);
-const createService = defineTransient(Service, [db]);
-const analytics = createLazySingleton(Analytics, [db]);
+const db          = createSingleton({ target: Database, deps: [] });
+const createSvc   = defineTransient({ target: Service, deps: [db] });
+const useAnalytics = defineSingleton({ target: Analytics, deps: [db], lazy: true });
 ```
 
-## Exports
+## Subpath Exports
 
-The main `compdi` entry currently exports:
+| Import | Contents |
+|---|---|
+| `compdi/macros` | All macro functions and types |
+| `compdi/plugin` | `compdiPlugin`, `vitePlugin`, `rollupPlugin`, `CompdiPluginOptions` |
+| `compdi/plugin/vite` | Vite plugin (default export) |
+| `compdi/plugin/rollup` | Rollup plugin (default export) |
+| `compdi/plugin/rolldown` | Rolldown plugin (default export) |
+| `compdi/plugin/rspack` | Rspack plugin (default export) |
+| `compdi/plugin/esbuild` | esbuild plugin (default export) |
+| `compdi` | Everything (macros + plugin helpers) |
 
-- `createSingleton`
-- `defineSingleton`
-- `defineTransient`
-- `createLazySingleton`
-- `defineLazySingleton`
-- `createAsyncSingleton`
-- `defineAsyncSingleton`
-- `defineAppTeardown`
-- `compdiPlugin`
-- `vitePlugin`
-- `rollupPlugin`
-- `CompdiPluginOptions`
+## Macros
 
-## Macro Rules
+- `createSingleton({ target, deps })` / `createSingleton({ factory, deps })`
+- `defineSingleton({ target, deps })` / `defineSingleton({ ..., lazy: true })` for lazy
+- `createTransient({ target, deps })`
+- `defineTransient({ target, deps })`
+- `createScoped({ target, deps }, contextId)`
+- `defineScoped({ target, deps })`
+- `defineAppTeardown(resources)`
+
+Naming rule:
 
 - `create...` macros produce values or instances.
 - `define...` macros produce functions or providers.
 - Macros are compile-time only and must be erased by the build transform.
 
-Examples:
-
-- `createSingleton(Database, [])` produces a shared `Database` instance.
-- `defineSingleton(Database, [])` produces a `() => Database` getter.
-- `defineTransient(Service, [db])` produces a `() => Service` factory.
-- `createAsyncSingleton(factory, deps)` produces an awaited singleton value.
-- `defineAppTeardown(resources)` produces an async teardown function.
-
 ## Build Integration
 
-If you need builder-specific entry points beyond the helpers re-exported here, use `unplugin-compdi` directly.
+All major build tools are available as dedicated subpath exports. See the [Subpath Exports](#subpath-exports) table above.
 
 ## Important
 

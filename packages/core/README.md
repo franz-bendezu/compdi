@@ -12,31 +12,32 @@ npm install @compdi/core
 
 This package exports the macro signatures consumed by the Compdi build transform.
 
-- `createSingleton(Target, deps)`
-- `defineSingleton(Target, deps)`
-- `defineTransient(Target, deps)`
-- `createLazySingleton(Target, deps)`
-- `defineLazySingleton(Target, deps)`
-- `createAsyncSingleton(factory, deps)`
-- `defineAsyncSingleton(factory, deps)`
+- `createSingleton({ target, deps, lazy? })` / `createSingleton({ factory, deps, lazy? })`
+- `defineSingleton({ target, deps, lazy? })` / `defineSingleton({ factory, deps, lazy? })`
+- `createTransient({ target, deps })` / `createTransient({ factory, deps })`
+- `defineTransient({ target, deps })` / `defineTransient({ factory, deps })`
+- `createScoped({ target, deps }, contextId)` / `createScoped({ factory, deps }, contextId)`
+- `defineScoped({ target, deps })` / `defineScoped({ factory, deps })`
 - `defineAppTeardown(resources)`
 
 Naming rule:
 
-- `create...` macros produce values or instances.
-- `define...` macros produce functions or providers.
+- `create...` macros produce values or instances directly.
+- `define...` macros produce functions, getters, or accessors.
+- Pass `lazy: true` to `createSingleton` / `defineSingleton` for lazy initialization.
+- Pass an async `factory` for async singleton resolution.
 
 ## Usage
 
 ```ts
 import {
-  createAsyncSingleton,
-  createLazySingleton,
   createSingleton,
-  defineAsyncSingleton,
-  defineLazySingleton,
   defineSingleton,
+  createTransient,
   defineTransient,
+  createScoped,
+  defineScoped,
+  defineAppTeardown,
 } from "@compdi/core";
 
 class Database {}
@@ -45,13 +46,27 @@ class Service {
   constructor(private readonly db: Database) {}
 }
 
-const db = createSingleton(Database, []);
-const useDb = defineSingleton(Database, []);
-const createService = defineTransient(Service, [db]);
-const analytics = createLazySingleton(Service, [db]);
-const useAnalytics = defineLazySingleton(Service, [db]);
-const connection = createAsyncSingleton(async (db: Database) => db, [db]);
-const useConnection = defineAsyncSingleton(async (db: Database) => db, [db]);
+// Eager singleton
+const db = createSingleton({ target: Database, deps: [] });
+
+// Singleton getter
+const useDb = defineSingleton({ target: Database, deps: [] });
+
+// Lazy singleton getter
+const useLazyDb = defineSingleton({ target: Database, deps: [], lazy: true });
+
+// Async singleton via factory
+const conn = createSingleton({ factory: async (db: Database) => db, deps: [db] });
+
+// Transient — new instance returned directly
+const svc = createTransient({ target: Service, deps: [db] });
+
+// Transient factory — new instance on every call
+const createSvc = defineTransient({ target: Service, deps: [db] });
+
+// Scoped — per-context instance
+const scopedSvc = createScoped({ target: Service, deps: [db] }, requestId);
+const getScopedSvc = defineScoped({ target: Service, deps: [db] });
 ```
 
 ## Runtime Behavior
