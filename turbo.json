@@ -6,19 +6,19 @@
       "outputs": ["dist/**"]
     },
     "release:verify": {
-      "dependsOn": ["build", "^release:verify"],
+      "dependsOn": ["build"],
       "cache": false
     },
     "release:ci": {
-      "dependsOn": ["build", "^release:ci"],
+      "dependsOn": ["build"],
       "cache": false
     },
     "release": {
-      "dependsOn": ["build", "^release"],
+      "dependsOn": ["build"],
       "cache": false
     },
     "release:dry-run": {
-      "dependsOn": ["build", "^release:dry-run"],
+      "dependsOn": ["build"],
       "cache": false
     },
     "dev": {
