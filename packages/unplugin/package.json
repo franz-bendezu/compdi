@@ -52,19 +52,19 @@
   },
   "dependencies": {
     "magic-string": "^0.30.11",
-    "oxc-parser": "^0.129.0",
+    "oxc-parser": "^0.130.0",
     "unplugin": "^3.0.0",
     "vite": "^8.0.12"
   },
   "devDependencies": {
     "@rspack/cli": "^1.7.11",
     "@rspack/core": "^1.7.11",
-    "@types/node": "^25.6.2",
-    "esbuild": "^0.27.7",
-    "rolldown": "^1.0.0",
+    "@types/node": "^25.7.0",
+    "esbuild": "^0.28.0",
+    "rolldown": "^1.0.1",
     "rollup": "^4.60.3",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.6"
   }
 }
