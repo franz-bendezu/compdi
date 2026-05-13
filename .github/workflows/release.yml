@@ -97,10 +97,14 @@ jobs:
         if: ${{ inputs.dry-run == false }}
         run: |
           # Publishes with provenance. Tokenless trusted publishing also requires npm-side trusted publisher setup.
-          npm publish --workspace packages/core --access public --provenance
-          npm publish --workspace packages/compdi --access public --provenance
-          npm publish --workspace packages/unplugin --access public --provenance
+          npm publish --workspace packages/core --access public --provenance --loglevel verbose
+          npm publish --workspace packages/compdi --access public --provenance --loglevel verbose
+          npm publish --workspace packages/unplugin --access public --provenance --loglevel verbose
           echo "✓ Packages published successfully"
+
+      - name: Dump npm debug log on failure
+        if: failure()
+        run: cat ~/.npm/_logs/*.log || echo "No npm logs found"
       
       - name: Create Git tag
         if: ${{ inputs.dry-run == false }}
