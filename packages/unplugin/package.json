@@ -59,7 +59,7 @@
   "devDependencies": {
     "@compdi/core": "workspace:^",
     "@rspack/cli": "^1.7.11",
-    "@rspack/core": "^1.7.11",
+    "@rspack/core": "^2.0.3",
     "@types/node": "^25.7.0",
     "esbuild": "^0.28.0",
     "rolldown": "^1.0.1",
