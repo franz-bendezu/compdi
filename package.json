@@ -21,7 +21,7 @@
     "publish:local": "turbo run release"
   },
   "devDependencies": {
-    "turbo": "^2.0.14",
+    "turbo": "^2.9.14",
     "typescript": "^6.0.3"
   }
 }
