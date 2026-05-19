@@ -63,6 +63,28 @@ describe("transformCompdiMacros", () => {
         await expect(runFixture("transient/create.input.ts"))
           .toMatchFileSnapshot(snapshot("transient/create"));
       });
+
+      it("creates distinct instances on each factory call at runtime", async () => {
+        const input = [
+          'import { createTransient } from "@compdi/core";',
+          "class Handler {}",
+          "export const createHandler = createTransient({ target: Handler, deps: [] });",
+          "export const first = createHandler();",
+          "export const second = createHandler();"
+        ].join("\n");
+
+        const result = transformCompdiMacros(input, "transient/runtime.input.js");
+
+        if (!result) {
+          throw new Error("Expected runtime transient fixture to be transformed");
+        }
+
+        const encoded = Buffer.from(result.code).toString("base64");
+        const module = await import(`data:text/javascript;base64,${encoded}`);
+
+        expect(typeof module.createHandler).toBe("function");
+        expect(module.first).not.toBe(module.second);
+      });
     });
 
     describe("defineTransient", () => {
