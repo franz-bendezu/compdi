@@ -15,14 +15,15 @@ This package exports the macro signatures consumed by the Compdi build transform
 - `createSingleton({ target, deps, lazy? })` / `createSingleton({ factory, deps, lazy? })`
 - `defineSingleton({ target, deps, lazy? })` / `defineSingleton({ factory, deps, lazy? })`
 - `createTransient({ target, deps })` / `createTransient({ factory, deps })`
-- `defineTransient({ target, deps })` / `defineTransient({ factory, deps })`
+- `defineTransient({ target, deps })` / `defineTransient({ factory, deps })` (deprecated alias of `createTransient`)
 - `createScoped({ target, deps }, contextId)` / `createScoped({ factory, deps }, contextId)`
 - `defineScoped({ target, deps })` / `defineScoped({ factory, deps })`
 - `defineAppTeardown(resources)`
 
 Naming rule:
 
-- `create...` macros produce values or instances directly.
+- `createSingleton` and `createScoped` produce values directly.
+- `createTransient` produces a factory that creates a new instance on each call.
 - `define...` macros produce functions, getters, or accessors.
 - Pass `lazy: true` to `createSingleton` / `defineSingleton` for lazy initialization.
 - Pass an async `factory` for async singleton resolution.
@@ -58,11 +59,12 @@ const useLazyDb = defineSingleton({ target: Database, deps: [], lazy: true });
 // Async singleton via factory
 const conn = createSingleton({ factory: async (db: Database) => db, deps: [db] });
 
-// Transient — new instance returned directly
-const svc = createTransient({ target: Service, deps: [db] });
-
 // Transient factory — new instance on every call
-const createSvc = defineTransient({ target: Service, deps: [db] });
+const createSvc = createTransient({ target: Service, deps: [db] });
+const svc = createSvc();
+
+// Deprecated alias with the same transient behavior
+const makeSvc = defineTransient({ target: Service, deps: [db] });
 
 // Scoped — per-context instance
 const scopedSvc = createScoped({ target: Service, deps: [db] }, requestId);

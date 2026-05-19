@@ -57,7 +57,7 @@ export default {
 ### 2. Define your dependencies
 
 ```ts
-import { createSingleton, defineSingleton, defineTransient } from "compdi/macros";
+import { createSingleton, defineSingleton, createTransient } from "compdi/macros";
 
 class Database {}
 
@@ -73,7 +73,7 @@ class Analytics {
 const db = createSingleton({ target: Database, deps: [] });
 
 // Transient — new instance on every call
-const createUserService = defineTransient({ target: UserService, deps: [db] });
+const createUserService = createTransient({ target: UserService, deps: [db] });
 
 // Lazy singleton — created on first access (lazy option on defineSingleton)
 const useAnalytics = defineSingleton({ target: Analytics, deps: [db], lazy: true });
@@ -91,7 +91,7 @@ No container. No token strings. No runtime overhead.
 ## Subpath Exports
 
 ```ts
-import { createSingleton, defineTransient } from "compdi/macros";       // macro definitions only
+import { createSingleton, createTransient } from "compdi/macros";       // macro definitions only
 import { vitePlugin, rollupPlugin }         from "compdi/plugin";        // all plugin helpers
 import vitePlugin                           from "compdi/plugin/vite";   // vite only
 import rollupPlugin                         from "compdi/plugin/rollup"; // rollup only
@@ -106,8 +106,8 @@ import { createSingleton, vitePlugin }      from "compdi";               // ever
 | `createSingleton({ factory, deps })` | `T` or `Promise<T>` | Eager singleton from factory (async supported) |
 | `defineSingleton({ target, deps })` | `() => T` | Getter for a shared instance |
 | `defineSingleton({ target, deps, lazy: true })` | `() => T` | Lazy getter — instance created on first call |
-| `createTransient({ target, deps })` | `T` | New instance returned directly |
-| `defineTransient({ target, deps })` | `() => T` | Factory — new instance on every call |
+| `createTransient({ target, deps })` | `() => T` | Factory — new instance on every call |
+| `defineTransient({ target, deps })` | `() => T` | Deprecated alias of `createTransient` |
 | `createScoped({ target, deps }, contextId)` | `T` | Per-context instance (e.g. per request) |
 | `defineScoped({ target, deps })` | `ScopedAccessor<T>` | Deferred per-context accessor |
 | `defineAppTeardown(resources)` | `() => Promise<void>` | Async cleanup for all resources |
@@ -116,7 +116,8 @@ import { createSingleton, vitePlugin }      from "compdi";               // ever
 
 ## Naming Convention
 
-- `create...` — produces a value or instance directly.
+- `createSingleton` / `createScoped` — produces a value or instance directly.
+- `createTransient` — produces a factory for a fresh instance on each call.
 - `define...` — produces a function, getter, or deferred accessor.
 
 ## Supported Build Tools

@@ -11,11 +11,10 @@ export function collectTransientReplacements(
   let found = false;
 
   for (const match of collectMacroMatches(code, "createTransient")) {
-    const { name, options, hasAwait, start, end } = match;
+    const { name, options, start, end } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
-    const rhs = hasAwait ? `await ${expr}` : expr;
-    ms.overwrite(start, end, `export const ${name} = ${rhs};`);
+    ms.overwrite(start, end, `export const ${name} = () => ${expr};`);
     found = true;
   }
 

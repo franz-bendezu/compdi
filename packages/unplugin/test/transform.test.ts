@@ -59,7 +59,7 @@ describe("transformCompdiMacros", () => {
 
   describe("transient", () => {
     describe("createTransient", () => {
-      it("returns the instantiation directly", async () => {
+      it("returns a factory function that creates a new instance each call", async () => {
         await expect(runFixture("transient/create.input.ts"))
           .toMatchFileSnapshot(snapshot("transient/create"));
       });

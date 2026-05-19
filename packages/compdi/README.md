@@ -30,7 +30,7 @@ export default defineConfig({
 import {
   createSingleton,
   defineSingleton,
-  defineTransient,
+  createTransient,
 } from "compdi/macros";
 
 class Database {}
@@ -44,7 +44,7 @@ class Analytics {
 }
 
 const db          = createSingleton({ target: Database, deps: [] });
-const createSvc   = defineTransient({ target: Service, deps: [db] });
+const createSvc   = createTransient({ target: Service, deps: [db] });
 const useAnalytics = defineSingleton({ target: Analytics, deps: [db], lazy: true });
 ```
 
@@ -66,14 +66,15 @@ const useAnalytics = defineSingleton({ target: Analytics, deps: [db], lazy: true
 - `createSingleton({ target, deps })` / `createSingleton({ factory, deps })`
 - `defineSingleton({ target, deps })` / `defineSingleton({ ..., lazy: true })` for lazy
 - `createTransient({ target, deps })`
-- `defineTransient({ target, deps })`
+- `defineTransient({ target, deps })` (deprecated alias of `createTransient`)
 - `createScoped({ target, deps }, contextId)`
 - `defineScoped({ target, deps })`
 - `defineAppTeardown(resources)`
 
 Naming rule:
 
-- `create...` macros produce values or instances.
+- `createSingleton` and `createScoped` macros produce values or instances.
+- `createTransient` produces a factory that creates a fresh instance on each call.
 - `define...` macros produce functions or providers.
 - Macros are compile-time only and must be erased by the build transform.
 

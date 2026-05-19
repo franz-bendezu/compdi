@@ -75,31 +75,35 @@ export function defineSingleton<T>(options: DiOptions<T, any>): (() => T) | Prom
   return macroNotTransformed("defineSingleton");
 }
 
-// createTransient: async factory -> Promise<T>, class target -> T, sync factory -> T
+// createTransient: async factory -> () => Promise<T>, class target -> () => T, sync factory -> () => T
 export function createTransient<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>> }
-): InstanceType<C>;
+): () => InstanceType<C>;
 export function createTransient<F extends (...args: any[]) => Promise<any>>(
   options: { factory: F; deps?: NoInfer<Parameters<F>> }
-): ReturnType<F>;
+): () => ReturnType<F>;
 export function createTransient<F extends (...args: any[]) => any>(
   options: { factory: F; deps?: NoInfer<Parameters<F>> }
-): ReturnType<F>;
+): () => ReturnType<F>;
 export function createTransient<T>(
   options: { target: new (...args: any[]) => T; deps?: readonly any[] }
-): T;
+): () => T;
 export function createTransient<T>(
   options: { factory: (...args: any[]) => Promise<T>; deps?: readonly any[] }
-): Promise<T>;
+): () => Promise<T>;
 export function createTransient<T>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[] }
-): T;
-export function createTransient<T>(options: DiOptions<T, any>): T | Promise<T> {
+): () => T;
+export function createTransient<T>(options: DiOptions<T, any>): () => T | Promise<T> {
   void options;
   return macroNotTransformed("createTransient");
 }
 
-// defineTransient: async factory -> () => Promise<T>, class target -> () => T, sync factory -> () => T
+// defineTransient: deprecated alias of createTransient
+/**
+ * @deprecated Use createTransient instead. defineTransient is kept as an alias
+ * during alpha and may be removed in a future release.
+ */
 export function defineTransient<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>> }
 ): () => InstanceType<C>;
@@ -118,6 +122,10 @@ export function defineTransient<T>(
 export function defineTransient<T>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[] }
 ): () => T;
+/**
+ * @deprecated Use createTransient instead. defineTransient is kept as an alias
+ * during alpha and may be removed in a future release.
+ */
 export function defineTransient<T>(options: DiOptions<T, any>): () => T | Promise<T> {
   void options;
   return macroNotTransformed("defineTransient");

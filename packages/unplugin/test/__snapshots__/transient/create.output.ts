@@ -20,4 +20,4 @@ class RequestHandler {
 
 export const config = new Config("production");
 export const logger = new Logger(config);
-export const handler = new RequestHandler(config, logger, "req-001");
+export const handler = () => new RequestHandler(config, logger, "req-001");

@@ -216,13 +216,13 @@ function resolveDependencyExpression(
 
   switch (binding.kind) {
     case "create-singleton":
-    case "create-transient":
     case "create-scoped":
       return binding.instanceName;
     case "define-singleton":
       return binding.instanceName;
     case "define-singleton-lazy":
       return `${dependency}()`;
+    case "create-transient":
     case "define-transient":
     case "define-scoped":
       return `${dependency}()`;
@@ -248,13 +248,13 @@ export function resolveTeardownResource(
 
   switch (binding.kind) {
     case "create-singleton":
-    case "create-transient":
     case "create-scoped":
       return { expression: binding.instanceName, awaitExpression: false };
     case "define-singleton":
       return { expression: binding.instanceName, awaitExpression: false };
     case "define-singleton-lazy":
       return { expression: `${binding.peekName}()`, awaitExpression: false };
+    case "create-transient":
     case "define-transient":
     case "define-scoped":
       return { expression: `${resource}()`, awaitExpression: false };
