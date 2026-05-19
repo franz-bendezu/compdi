@@ -82,7 +82,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.value }}"
           git add package.json pnpm-lock.yaml packages/*/package.json playground/package.json
-          git commit -m "chore: release v${VERSION}"
+          git commit -S -m "chore: release v${VERSION}"
 
       - name: Publish to npm (Dry Run)
         if: ${{ inputs.dry-run == true }}
