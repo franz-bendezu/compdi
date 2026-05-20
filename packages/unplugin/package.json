@@ -58,7 +58,7 @@
   },
   "devDependencies": {
     "@compdi/core": "workspace:^",
-    "@rspack/cli": "^1.7.11",
+    "@rspack/cli": "^2.0.3",
     "@rspack/core": "^2.0.3",
     "@types/node": "^25.8.0",
     "esbuild": "^0.28.0",
