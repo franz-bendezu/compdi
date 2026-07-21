@@ -65,6 +65,7 @@ function buildScopedGetter(
 function buildContextualScopedProxy(
   name: string,
   scopeName: string,
+  exported: boolean,
   instantiationExpr: string,
   contextExpr: string,
   contextKeyType?: string,
@@ -131,7 +132,7 @@ function buildContextualScopedProxy(
     `    return Reflect.getOwnPropertyDescriptor(${resolveVar}(), __property);`,
     `  },`,
     `})${proxyType};`,
-    `export const [${name}, ${scopeName}] = [__proxy_${name}, ${controllerVar}] as const;`
+    `${exported ? "export " : ""}const [${name}, ${scopeName}] = [__proxy_${name}, ${controllerVar}] as const;`
   ].filter((line) => line !== "").join("\n");
 }
 
@@ -143,7 +144,7 @@ export function collectScopedReplacements(
   let found = false;
 
   for (const match of collectMacroMatches(code, "createScoped")) {
-    const { name, scopeName, options, start, end, typeArgs } = match;
+    const { name, scopeName, exported, options, start, end, typeArgs } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
     const valueType = typeArgs[0];
@@ -152,6 +153,7 @@ export function collectScopedReplacements(
     ms.overwrite(start, end, buildContextualScopedProxy(
       name,
       scopeName,
+      exported,
       expr,
       options.context,
       contextKeyType,
@@ -162,14 +164,14 @@ export function collectScopedReplacements(
   }
 
   for (const match of collectMacroMatches(code, "defineScoped")) {
-    const { name, options, start, end, typeArgs } = match;
+    const { name, exported, options, start, end, typeArgs } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
     const valueType = typeArgs[0];
     const contextKeyType = typeArgs[1];
     ms.overwrite(start, end, [
       buildScopedGetter(name, expr, "__ctx", contextKeyType, valueType, options.onRelease),
-      `export const ${name} = __getScoped_${name};`
+      `${exported ? "export " : ""}const ${name} = __getScoped_${name};`
     ].join("\n"));
     found = true;
   }

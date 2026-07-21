@@ -11,16 +11,17 @@ export function collectSingletonReplacements(
   let found = false;
 
   for (const match of collectMacroMatches(code, "createSingleton")) {
-    const { name, options, hasAwait, start, end } = match;
+    const { name, exported, options, hasAwait, start, end } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
     const rhs = hasAwait ? `await ${expr}` : expr;
-    ms.overwrite(start, end, `export const ${name} = ${rhs};`);
+    ms.overwrite(start, end, `${exported ? "export " : ""}const ${name} = ${rhs};`);
     found = true;
   }
 
   for (const match of collectMacroMatches(code, "defineSingleton")) {
-    const { name, options, hasAwait, start, end } = match;
+    const { name, exported, options, hasAwait, start, end } = match;
+    const visibility = exported ? "export " : "";
     const binding = bindings.get(name);
     if (!binding) continue;
 
@@ -35,7 +36,7 @@ export function collectSingletonReplacements(
       ms.overwrite(start, end, [
         typedDecl,
         `const ${binding.peekName} = () => ${binding.instanceName};`,
-        `export const ${name} = () => {`,
+        `${visibility}const ${name} = () => {`,
         `  if (!${binding.instanceName}) ${binding.instanceName} = ${expr};`,
         `  return ${binding.instanceName};`,
         `};`
@@ -47,11 +48,10 @@ export function collectSingletonReplacements(
       const typedDecl = typeAnnotation
         ? `const ${binding.instanceName}: ${typeAnnotation} = ${rhs};`
         : `const ${binding.instanceName} = ${rhs};`;
-      ms.overwrite(start, end, `${typedDecl}\nexport const ${name} = () => ${binding.instanceName};`);
+      ms.overwrite(start, end, `${typedDecl}\n${visibility}const ${name} = () => ${binding.instanceName};`);
     }
     found = true;
   }
 
   return found;
 }
-

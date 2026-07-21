@@ -125,6 +125,40 @@ describe("transformCompdiMacros", () => {
     });
   });
 
+  it("transforms every macro without exporting private declarations", () => {
+    const input = [
+      'import { createSingleton, defineSingleton, createTransient, defineTransient, createScoped, defineScoped, defineAppTeardown } from "@compdi/core";',
+      "class Service {}",
+      "const context = {};",
+      "const privateSingleton = createSingleton({ target: Service, deps: [] });",
+      "const privateSingletonAccessor = defineSingleton({ target: Service, deps: [] });",
+      "const privateTransient = createTransient({ target: Service, deps: [] });",
+      "const privateTransientAlias = defineTransient({ target: Service, deps: [] });",
+      "const privateScopedAccessor = defineScoped({ target: Service, deps: [] });",
+      "const [privateScoped, privateScope] = createScoped({ target: Service, deps: [], context: () => context });",
+      "const privateTeardown = defineAppTeardown([]);",
+      "export const publicService = createSingleton({ target: Service, deps: [privateSingleton] });"
+    ].join("\n");
+
+    const result = transformCompdiMacros(input, "private-macros.input.ts");
+    if (!result) throw new Error("Expected private macros to be transformed");
+
+    expect(result.code).not.toMatch(/\b(?:create|define)(?:Singleton|Transient|Scoped|AppTeardown)\s*\(/);
+    for (const name of [
+      "privateSingleton",
+      "privateSingletonAccessor",
+      "privateTransient",
+      "privateTransientAlias",
+      "privateScopedAccessor",
+      "privateTeardown"
+    ]) {
+      expect(result.code).toMatch(new RegExp(`^const ${name}\\b`, "m"));
+      expect(result.code).not.toMatch(new RegExp(`^export const ${name}\\b`, "m"));
+    }
+    expect(result.code).toMatch(/^const \[privateScoped, privateScope\]/m);
+    expect(result.code).toMatch(/^export const publicService\b/m);
+  });
+
   it("generates a source map for transformed files", () => {
     const result = transformCompdiMacros(
       readFixture("singleton/define-lazy.input.ts"),

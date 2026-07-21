@@ -4,7 +4,7 @@ import type { BindingInfo, BindingKind } from "./types";
 
 export const CORE_IMPORT_REGEX = /import\s*{[^}]*}\s*from\s*["'](?:@compdi\/core|compdi\/macros|compdi)["'];?\s*/g;
 export const TEARDOWN_REGEX =
-  /export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*defineAppTeardown\(\s*\[([\s\S]*?)\]\s*\)\s*;?/g;
+  /(export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*defineAppTeardown\(\s*\[([\s\S]*?)\]\s*\)\s*;?/g;
 
 export function parseWithOxc(code: string, id: string): boolean {
   try {
@@ -129,11 +129,13 @@ function extractValueAt(source: string, start: number): string {
 
 /**
  * Matches all calls of the form:
- *   export const <name> = <macroName>({ ... });
+ *   [export] const <name> = <macroName>({ ... });
  * Returns an iterator of [fullMatch, name, objectSource, start, end].
  */
 export interface MacroMatch {
   name: string;
+  /** Whether the original declaration included the `export` modifier. */
+  exported: boolean;
   /** Second binding in `[value, scope]` declarations. */
   scopeName?: string;
   options: ParsedDiOptions;
@@ -150,19 +152,20 @@ export function* collectMacroMatches(
   macroName: string
 ): Generator<MacroMatch> {
   const headRegex = new RegExp(
-    `export\\s+const\\s+(?:([A-Za-z_$][\\w$]*)|\\[\\s*([A-Za-z_$][\\w$]*)\\s*,\\s*([A-Za-z_$][\\w$]*)\\s*\\])\\s*=\\s*(await\\s+)?${macroName}\\s*(?:<([^>]*)>)?\\s*\\(`,
+    `(?:(export)\\s+)?const\\s+(?:([A-Za-z_$][\\w$]*)|\\[\\s*([A-Za-z_$][\\w$]*)\\s*,\\s*([A-Za-z_$][\\w$]*)\\s*\\])\\s*=\\s*(await\\s+)?${macroName}\\s*(?:<([^>]*)>)?\\s*\\(`,
     "g"
   );
   let m = headRegex.exec(code);
   while (m) {
-    const name = m[1] ?? m[2];
-    const scopeName = m[3];
+    const exported = m[1] !== undefined;
+    const name = m[2] ?? m[3];
+    const scopeName = m[4];
     if (scopeName && macroName !== "createScoped") {
       m = headRegex.exec(code);
       continue;
     }
-    const hasAwait = m[4] !== undefined;
-    const rawTypeArgs = m[5];
+    const hasAwait = m[5] !== undefined;
+    const rawTypeArgs = m[6];
     const typeArgs = rawTypeArgs
       ? rawTypeArgs.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
@@ -179,7 +182,7 @@ export function* collectMacroMatches(
     const argsSource = code.slice(openParen + 1, closeParen).trim();
     const options = parseDiOptions(argsSource);
     if (options) {
-      yield { name, scopeName, options, hasAwait, typeArgs, start: m.index, end: endIndex };
+      yield { name, exported, scopeName, options, hasAwait, typeArgs, start: m.index, end: endIndex };
     }
     headRegex.lastIndex = endIndex;
     m = headRegex.exec(code);

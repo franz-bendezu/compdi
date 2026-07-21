@@ -11,21 +11,20 @@ export function collectTransientReplacements(
   let found = false;
 
   for (const match of collectMacroMatches(code, "createTransient")) {
-    const { name, options, start, end } = match;
+    const { name, exported, options, start, end } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
-    ms.overwrite(start, end, `export const ${name} = () => ${expr};`);
+    ms.overwrite(start, end, `${exported ? "export " : ""}const ${name} = () => ${expr};`);
     found = true;
   }
 
   for (const match of collectMacroMatches(code, "defineTransient")) {
-    const { name, options, start, end } = match;
+    const { name, exported, options, start, end } = match;
     const deps = resolveDependencies(options.deps, bindings);
     const expr = buildInstantiation(options, deps);
-    ms.overwrite(start, end, `export const ${name} = () => ${expr};`);
+    ms.overwrite(start, end, `${exported ? "export " : ""}const ${name} = () => ${expr};`);
     found = true;
   }
 
   return found;
 }
-

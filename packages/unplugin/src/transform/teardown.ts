@@ -11,8 +11,9 @@ export function collectTeardownReplacements(
   let found = false;
 
   for (const match of code.matchAll(TEARDOWN_REGEX)) {
-    const name = match[1];
-    const resources = splitDependencyList(match[2]);
+    const exported = match[1] !== undefined;
+    const name = match[2];
+    const resources = splitDependencyList(match[3]);
 
     const lines = resources.flatMap((resource, index) => {
       const resolved = resolveTeardownResource(resource, bindings);
@@ -37,7 +38,7 @@ export function collectTeardownReplacements(
     const start = match.index ?? 0;
     const end = start + match[0].length;
     ms.overwrite(start, end, [
-      `export const ${name} = async () => {`,
+      `${exported ? "export " : ""}const ${name} = async () => {`,
       `  const tasks = [];`,
       ...lines,
       `  await Promise.allSettled(tasks);`,
