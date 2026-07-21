@@ -12,11 +12,31 @@ export interface DiOptions<T, TDeps extends readonly unknown[]> {
   lazy?: boolean;
 }
 
-/** Accessor returned by defineScoped, including non-creating lifecycle operations. */
+/**
+ * Accessor returned by {@link defineScoped}.
+ *
+ * Calling the accessor creates a value when its context has no entry. The
+ * lifecycle methods inspect or remove entries without invoking the factory.
+ *
+ * @example Releasing a request-scoped database resource
+ * ```ts
+ * const resource = useScopedDatabaseResource.release(request);
+ * if (resource) {
+ *   await resource.connected;
+ *   await resource.client.end();
+ * }
+ * ```
+ */
 export interface ScopedAccessor<T, K = unknown> {
   (contextId: K): T;
+
+  /** Reports whether a value exists without creating one. */
   has(contextId: K): boolean;
+
+  /** Returns an existing value without creating one. */
   peek(contextId: K): T | undefined;
+
+  /** Removes and returns an existing value without creating one. */
   release(contextId: K): T | undefined;
 }
 
@@ -28,6 +48,14 @@ function macroNotTransformed(name: string): never {
 
 // createSingleton: async factory -> Promise<T>, class target -> T, sync factory -> T
 // Overload 1 & 3: inferred from C/F directly (no T needed)
+/**
+ * Creates one eagerly initialized application-wide value.
+ *
+ * @example
+ * ```ts
+ * const database = createSingleton({ target: Database, deps: [config] });
+ * ```
+ */
 export function createSingleton<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>>; lazy?: boolean }
 ): InstanceType<C>;
@@ -57,6 +85,16 @@ export function createSingleton<T>(options: DiOptions<T, any>): T | Promise<T> {
 //   inferred sync factory   ->  () => ReturnType<F>
 //   explicit <T> async      ->  Promise<() => T>     (must await call site; getter is synchronous)
 //   explicit <T> sync       ->  () => T
+/**
+ * Defines an accessor for one application-wide value.
+ * Pass `lazy: true` to defer construction until the first accessor call.
+ *
+ * @example
+ * ```ts
+ * const useDatabase = defineSingleton({ target: Database, deps: [config], lazy: true });
+ * const database = useDatabase();
+ * ```
+ */
 export function defineSingleton<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>>; lazy?: boolean }
 ): () => InstanceType<C>;
@@ -78,6 +116,15 @@ export function defineSingleton<T>(options: DiOptions<T, any>): (() => T) | Prom
 }
 
 // createTransient: async factory -> () => Promise<T>, class target -> () => T, sync factory -> () => T
+/**
+ * Creates a factory that constructs a fresh value on every call.
+ *
+ * @example
+ * ```ts
+ * const createService = createTransient({ target: Service, deps: [database] });
+ * const service = createService();
+ * ```
+ */
 export function createTransient<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>> }
 ): () => InstanceType<C>;
@@ -103,8 +150,15 @@ export function createTransient<T>(options: DiOptions<T, any>): () => T | Promis
 
 // defineTransient: deprecated alias of createTransient
 /**
+ * Defines a factory that constructs a fresh value on every call.
+ *
  * @deprecated Use createTransient instead. defineTransient is kept as an alias
  * during alpha and may be removed in a future release.
+ *
+ * @example
+ * ```ts
+ * const createService = defineTransient({ target: Service, deps: [database] });
+ * ```
  */
 export function defineTransient<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>> }
@@ -134,6 +188,15 @@ export function defineTransient<T>(options: DiOptions<T, any>): () => T | Promis
 }
 
 // createScoped: inferred from C/F, or explicit <T, K> for interface+context narrowing
+/**
+ * Returns the value associated with a context, creating it when absent.
+ * Repeated calls from the same generated binding and context reuse the value.
+ *
+ * @example
+ * ```ts
+ * const service = createScoped({ target: Service, deps: [database] }, request);
+ * ```
+ */
 export function createScoped<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>> },
   contextId: unknown
@@ -165,6 +228,19 @@ export function createScoped<T>(options: DiOptions<T, any>, contextId: unknown):
 }
 
 // defineScoped: inferred from C/F, or explicit <T, K> for interface+context narrowing
+/**
+ * Defines a per-context accessor with non-creating inspection and release
+ * operations. See {@link ScopedAccessor} for lifecycle methods.
+ *
+ * @example
+ * ```ts
+ * const useService = defineScoped<Service, Request>({
+ *   target: Service,
+ *   deps: [database]
+ * });
+ * const service = useService(request);
+ * ```
+ */
 export function defineScoped<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>> }
 ): ScopedAccessor<InstanceType<C>>;
@@ -188,6 +264,16 @@ export function defineScoped<T>(options: DiOptions<T, any>): ScopedAccessor<T | 
   return macroNotTransformed("defineScoped");
 }
 
+/**
+ * Defines an async teardown function that disposes the supplied resources in
+ * reverse order. Supported disposal protocols are resolved at build time.
+ *
+ * @example
+ * ```ts
+ * const teardown = defineAppTeardown([server, database]);
+ * await teardown();
+ * ```
+ */
 export function defineAppTeardown(
   resources: readonly unknown[]
 ): () => Promise<void> {
