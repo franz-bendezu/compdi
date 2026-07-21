@@ -40,7 +40,13 @@ const __getScoped_getRequestContext = (__ctx: RequestCtx) => {
   __registry_getRequestContext.set(__ctx, __val);
   return __val;
 };
-__getScoped_getRequestContext.release = (__ctx: RequestCtx) => __registry_getRequestContext.delete(__ctx);
+__getScoped_getRequestContext.has = (__ctx: RequestCtx) => __registry_getRequestContext.has(__ctx);
+__getScoped_getRequestContext.peek = (__ctx: RequestCtx) => __registry_getRequestContext.get(__ctx);
+__getScoped_getRequestContext.release = (__ctx: RequestCtx) => {
+  const __val = __registry_getRequestContext.get(__ctx);
+  __registry_getRequestContext.delete(__ctx);
+  return __val;
+};
 export const getRequestContext = __getScoped_getRequestContext;
 const __registry_getSession = new Map<SessionCtx, ISessionStore>();
 const __getScoped_getSession = (__ctx: SessionCtx) => {
@@ -50,7 +56,13 @@ const __getScoped_getSession = (__ctx: SessionCtx) => {
   __registry_getSession.set(__ctx, __val);
   return __val;
 };
-__getScoped_getSession.release = (__ctx: SessionCtx) => __registry_getSession.delete(__ctx);
+__getScoped_getSession.has = (__ctx: SessionCtx) => __registry_getSession.has(__ctx);
+__getScoped_getSession.peek = (__ctx: SessionCtx) => __registry_getSession.get(__ctx);
+__getScoped_getSession.release = (__ctx: SessionCtx) => {
+  const __val = __registry_getSession.get(__ctx);
+  __registry_getSession.delete(__ctx);
+  return __val;
+};
 export const getSession = __getScoped_getSession;
 
 export const session: ISessionStore = getSession({ sessionId: "abc" });

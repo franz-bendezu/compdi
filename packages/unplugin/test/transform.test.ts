@@ -98,7 +98,10 @@ describe("transformCompdiMacros", () => {
   describe("scoped", () => {
     describe("defineScoped", () => {
       it("returns a context-keyed accessor backed by a registry", async () => {
-        await expect(runFixture("scoped/define.input.ts"))
+        const code = runFixture("scoped/define.input.ts");
+        expect(code).not.toMatch(/\bdefineScoped\s*\(/);
+        expect(code).not.toContain("@compdi/core");
+        await expect(code)
           .toMatchFileSnapshot(snapshot("scoped/define"));
       });
     });

@@ -12,10 +12,12 @@ export interface DiOptions<T, TDeps extends readonly unknown[]> {
   lazy?: boolean;
 }
 
-/** Accessor returned by defineScoped. Calls return the scoped instance; .release() evicts it. */
+/** Accessor returned by defineScoped, including non-creating lifecycle operations. */
 export interface ScopedAccessor<T, K = unknown> {
   (contextId: K): T;
-  release(contextId: K): void;
+  has(contextId: K): boolean;
+  peek(contextId: K): T | undefined;
+  release(contextId: K): T | undefined;
 }
 
 function macroNotTransformed(name: string): never {

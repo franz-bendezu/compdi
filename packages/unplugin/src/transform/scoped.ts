@@ -7,12 +7,13 @@ import { buildInstantiation } from "./shared";
  * Scoped DI: one instance per contextId, per binding.
  *
  * Each defineScoped binding gets its own private Map so keys never collide
- * between bindings. The map is exposed via a __release_<name> function so
- * callers can evict entries when a context (e.g. request) is done.
+ * between bindings. The accessor exposes non-creating inspection and release
+ * methods so callers can dispose resources when a context is done.
  *
  * defineScoped({ target, deps }) → (contextId?) => instance
  *   - Calling with the same contextId returns the cached instance.
- *   - __release_<name>(contextId) removes the entry, allowing GC.
+ *   - .has() and .peek() inspect entries without creating them.
+ *   - .release() removes and returns an entry, allowing disposal and GC.
  */
 
 function buildScopedGetter(
@@ -24,8 +25,8 @@ function buildScopedGetter(
 ): string {
   const mapVar = `__registry_${name}`;
   const ctxType = contextKeyType ?? "unknown";
-  const ctxParam = `${contextIdArg}: ${ctxType}`;
-  const mapType = valueType ? `<${ctxType}, ${valueType}>` : `<${ctxType}, unknown>`;
+  const ctxParam = contextKeyType ? `${contextIdArg}: ${ctxType}` : contextIdArg;
+  const mapType = valueType ? `<${ctxType}, ${valueType}>` : "";
   return [
     `const ${mapVar} = new Map${mapType}();`,
     `const __getScoped_${name} = (${ctxParam}) => {`,
@@ -35,7 +36,13 @@ function buildScopedGetter(
     `  ${mapVar}.set(${contextIdArg}, __val);`,
     `  return __val;`,
     `};`,
-    `__getScoped_${name}.release = (${ctxParam}) => ${mapVar}.delete(${contextIdArg});`
+    `__getScoped_${name}.has = (${ctxParam}) => ${mapVar}.has(${contextIdArg});`,
+    `__getScoped_${name}.peek = (${ctxParam}) => ${mapVar}.get(${contextIdArg});`,
+    `__getScoped_${name}.release = (${ctxParam}) => {`,
+    `  const __val = ${mapVar}.get(${contextIdArg});`,
+    `  ${mapVar}.delete(${contextIdArg});`,
+    `  return __val;`,
+    `};`
   ].join("\n");
 }
 
