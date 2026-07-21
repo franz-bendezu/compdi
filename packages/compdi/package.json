@@ -1,6 +1,6 @@
 {
   "name": "compdi",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "type": "module",
   "description": "Compdi DI runtime and compiler - complete package",
   "types": "./dist/index.d.mts",
