@@ -1,30 +1,10 @@
-import type MagicString from "magic-string";
-import { collectMacroMatches, resolveDependencies } from "./context";
-import type { BindingInfo } from "./types";
-import { buildInstantiation } from "./shared";
+import type { MacroMatch } from "./context";
+import type { MacroGenerationContext } from "./generation";
 
-export function collectTransientReplacements(
-  code: string,
-  bindings: ReadonlyMap<string, BindingInfo>,
-  ms: MagicString
-): boolean {
-  let found = false;
+export function generateTransientExpression(match: MacroMatch, generation: MacroGenerationContext): string {
+  return `() => ${generation.instantiate(match.options!)}`;
+}
 
-  for (const match of collectMacroMatches(code, "createTransient")) {
-    const { name, exported, options, start, end } = match;
-    const deps = resolveDependencies(options.deps, bindings);
-    const expr = buildInstantiation(options, deps);
-    ms.overwrite(start, end, `${exported ? "export " : ""}const ${name} = () => ${expr};`);
-    found = true;
-  }
-
-  for (const match of collectMacroMatches(code, "defineTransient")) {
-    const { name, exported, options, start, end } = match;
-    const deps = resolveDependencies(options.deps, bindings);
-    const expr = buildInstantiation(options, deps);
-    ms.overwrite(start, end, `${exported ? "export " : ""}const ${name} = () => ${expr};`);
-    found = true;
-  }
-
-  return found;
+export function generateTransientDeclaration(match: MacroMatch, generation: MacroGenerationContext): string {
+  return `${match.exported ? "export " : ""}const ${match.name} = ${generateTransientExpression(match, generation)};`;
 }

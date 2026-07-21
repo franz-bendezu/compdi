@@ -1,51 +1,24 @@
-import type MagicString from "magic-string";
-import { splitDependencyList } from "./shared";
-import { TEARDOWN_REGEX, resolveTeardownResource } from "./context";
-import type { BindingInfo } from "./types";
+import type { MacroMatch } from "./context";
+import { resolveTeardownResource } from "./context";
+import type { MacroGenerationContext } from "./generation";
 
-export function collectTeardownReplacements(
-  code: string,
-  bindings: ReadonlyMap<string, BindingInfo>,
-  ms: MagicString
-): boolean {
-  let found = false;
+export function generateTeardownExpression(match: MacroMatch, generation: MacroGenerationContext, indent = ""): string {
+  const lines = (match.resources ?? []).flatMap((node, index) => {
+    const raw = generation.renderNode(node);
+    const resolved = resolveTeardownResource(node.type === "Identifier" ? node.name : raw, generation.module.bindings);
+    const local = `__resource_${index}`;
+    return [
+      `${indent}  const ${local} = ${resolved.awaitExpression ? `await ${resolved.expression}` : resolved.expression};`,
+      `${indent}  if (${local} != null && Symbol.asyncDispose in ${local}) {`,
+      `${indent}    // @ts-ignore`, `${indent}    tasks.push(${local}[Symbol.asyncDispose]());`,
+      `${indent}  } else if (${local} != null && Symbol.dispose in ${local}) {`, `${indent}    try {`,
+      `${indent}      // @ts-ignore`, `${indent}      ${local}[Symbol.dispose]();`, `${indent}    } catch (error) {`,
+      `${indent}      tasks.push(Promise.reject(error));`, `${indent}    }`, `${indent}  }`
+    ];
+  });
+  return [`${indent}async () => {`, `${indent}  const tasks = [];`, ...lines, `${indent}  await Promise.allSettled(tasks);`, `${indent}}`].join("\n");
+}
 
-  for (const match of code.matchAll(TEARDOWN_REGEX)) {
-    const exported = match[1] !== undefined;
-    const name = match[2];
-    const resources = splitDependencyList(match[3]);
-
-    const lines = resources.flatMap((resource, index) => {
-      const resolved = resolveTeardownResource(resource, bindings);
-      const localName = `__resource_${index}`;
-
-      return [
-        `  const ${localName} = ${resolved.awaitExpression ? `await ${resolved.expression}` : resolved.expression};`,
-        `  if (${localName} != null && Symbol.asyncDispose in ${localName}) {`,
-        `    // @ts-ignore`,
-        `    tasks.push(${localName}[Symbol.asyncDispose]());`,
-        `  } else if (${localName} != null && Symbol.dispose in ${localName}) {`,
-        `    try {`,
-        `      // @ts-ignore`,
-        `      ${localName}[Symbol.dispose]();`,
-        `    } catch (error) {`,
-        `      tasks.push(Promise.reject(error));`,
-        `    }`,
-        `  }`
-      ];
-    });
-
-    const start = match.index ?? 0;
-    const end = start + match[0].length;
-    ms.overwrite(start, end, [
-      `${exported ? "export " : ""}const ${name} = async () => {`,
-      `  const tasks = [];`,
-      ...lines,
-      `  await Promise.allSettled(tasks);`,
-      `};`
-    ].join("\n"));
-    found = true;
-  }
-
-  return found;
+export function generateTeardownDeclaration(match: MacroMatch, generation: MacroGenerationContext): string {
+  return `${match.exported ? "export " : ""}const ${match.name} = ${generateTeardownExpression(match, generation)};`;
 }

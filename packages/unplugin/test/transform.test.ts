@@ -172,4 +172,80 @@ describe("transformCompdiMacros", () => {
     expect(result.map).toBeTruthy();
     expect(result.map.toString()).toContain("singleton/define-lazy.input.ts");
   });
+
+  describe("AST discovery", () => {
+    it("matches imported aliases, static property forms, and preserves non-macro imports", () => {
+      const input = [
+        'import { createSingleton as singleton, macroNotTransformed } from "@compdi/core";',
+        "class Service {}",
+        "const target = Service;",
+        "export const service: Service = singleton({ \"ignored\": 1, \"deps\": [], target });",
+        "export { macroNotTransformed };"
+      ].join("\n");
+      const result = transformCompdiMacros(input, "alias.input.ts");
+      expect(result?.code).toContain('import { macroNotTransformed } from "@compdi/core";');
+      expect(result?.code).toContain("export const service = new target();");
+      expect(result?.code).not.toContain("createSingleton as singleton");
+    });
+
+    it("does not transform a lexically shadowed imported alias", () => {
+      const input = [
+        'import { createSingleton as singleton } from "@compdi/core";',
+        "function local(singleton: Function) { return singleton({ target: Date, deps: [] }); }",
+        "export const service = singleton({ target: Date, deps: [] });"
+      ].join("\n");
+      const result = transformCompdiMacros(input, "shadow.input.ts");
+      expect(result?.code).toContain("return singleton({ target: Date, deps: [] })");
+      expect(result?.code).toContain("export const service = new Date();");
+    });
+
+    it("keeps declarations inside exported functions local", () => {
+      const input = [
+        'import { createSingleton } from "@compdi/core";',
+        "export function make() {",
+        "  const value = createSingleton({ target: Date, deps: [] });",
+        "  return value;",
+        "}"
+      ].join("\n");
+      const result = transformCompdiMacros(input, "exported-function.input.ts");
+      expect(result?.code).toContain("export function make() {");
+      expect(result?.code).toContain("  const value = new Date();");
+      expect(result?.code).not.toContain("export const value");
+    });
+
+    it("lowers nested macro expressions without overlapping replacements", () => {
+      const input = [
+        'import { createSingleton, defineSingleton, createTransient, defineTransient, defineScoped, createScoped, defineAppTeardown } from "@compdi/core";',
+        "class Service {}",
+        "const getContext = () => 'ctx';",
+        "export const values = [",
+        "  createSingleton({ target: Service, deps: [createSingleton({ target: Date, deps: [] })] }),",
+        "  defineSingleton({ target: Service, deps: [] }),",
+        "  createTransient({ target: Service, deps: [] }),",
+        "  defineTransient({ target: Service, deps: [] }),",
+        "  defineScoped({ target: Service, deps: [] }),",
+        "  createScoped({ target: Service, deps: [], context: getContext }),",
+        "  defineAppTeardown([])",
+        "];"
+      ].join("\n");
+      const result = transformCompdiMacros(input, "nested.input.ts");
+      expect(result?.code).not.toMatch(/\b(?:create|define)(?:Singleton|Transient|Scoped|AppTeardown)\s*\(/);
+      expect(result?.code).toContain("new Service(new Date())");
+      expect(result?.code).toContain("(() => {");
+    });
+
+    it("reports unsupported recognized options with a source location", () => {
+      const input = [
+        'import { createSingleton } from "@compdi/core";',
+        "const options = { target: Date, deps: [] };",
+        "const value = createSingleton({ ...options });"
+      ].join("\n");
+      expect(() => transformCompdiMacros(input, "invalid-options.input.ts"))
+        .toThrow(/\[compdi\] createSingleton at invalid-options\.input\.ts:\d+:\d+: object spreads are not supported/);
+    });
+
+    it("returns null for syntax-invalid input", () => {
+      expect(transformCompdiMacros('import { createSingleton } from "@compdi/core"; const = ;', "invalid.input.ts")).toBeNull();
+    });
+  });
 });

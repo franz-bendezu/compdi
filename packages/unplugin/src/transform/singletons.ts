@@ -1,57 +1,35 @@
-import type MagicString from "magic-string";
-import { collectMacroMatches, resolveDependencies } from "./context";
-import type { BindingInfo } from "./types";
-import { buildInstantiation, buildTypeAnnotation } from "./shared";
+import type { MacroMatch } from "./context";
+import type { MacroGenerationContext } from "./generation";
 
-export function collectSingletonReplacements(
-  code: string,
-  bindings: ReadonlyMap<string, BindingInfo>,
-  ms: MagicString
-): boolean {
-  let found = false;
+export function generateSingletonExpression(match: MacroMatch, generation: MacroGenerationContext): string {
+  const options = match.options!;
+  const expression = generation.instantiate(options);
+  if (match.macroName === "createSingleton") return match.hasAwait ? `await ${expression}` : expression;
 
-  for (const match of collectMacroMatches(code, "createSingleton")) {
-    const { name, exported, options, hasAwait, start, end } = match;
-    const deps = resolveDependencies(options.deps, bindings);
-    const expr = buildInstantiation(options, deps);
-    const rhs = hasAwait ? `await ${expr}` : expr;
-    ms.overwrite(start, end, `${exported ? "export " : ""}const ${name} = ${rhs};`);
-    found = true;
+  const suffix = generation.nextUnique();
+  const value = `__compdi_value_${suffix}`;
+  if (options.lazy) return `(() => { let ${value} = null; return () => { if (!${value}) ${value} = ${expression}; return ${value}; }; })()`;
+  if (match.hasAwait) return `await (async () => { const ${value} = await ${expression}; return () => ${value}; })()`;
+  return `(() => { const ${value} = ${expression}; return () => ${value}; })()`;
+}
+
+export function generateSingletonDeclaration(match: MacroMatch, generation: MacroGenerationContext): string {
+  const visibility = match.exported ? "export " : "";
+  const name = match.name!;
+  const options = match.options!;
+  const expression = generation.instantiate(options);
+  if (match.macroName === "createSingleton") {
+    return `${visibility}const ${name} = ${match.hasAwait ? `await ${expression}` : expression};`;
   }
 
-  for (const match of collectMacroMatches(code, "defineSingleton")) {
-    const { name, exported, options, hasAwait, start, end } = match;
-    const visibility = exported ? "export " : "";
-    const binding = bindings.get(name);
-    if (!binding) continue;
-
-    const deps = resolveDependencies(options.deps, bindings);
-
-    if (options.lazy) {
-      const expr = buildInstantiation(options, deps);
-      const typeAnnotation = buildTypeAnnotation(options);
-      const typedDecl = typeAnnotation
-        ? `let ${binding.instanceName}: ${typeAnnotation} | null = null;`
-        : `let ${binding.instanceName} = null;`;
-      ms.overwrite(start, end, [
-        typedDecl,
-        `const ${binding.peekName} = () => ${binding.instanceName};`,
-        `${visibility}const ${name} = () => {`,
-        `  if (!${binding.instanceName}) ${binding.instanceName} = ${expr};`,
-        `  return ${binding.instanceName};`,
-        `};`
-      ].join("\n"));
-    } else {
-      const expr = buildInstantiation(options, deps);
-      const rhs = hasAwait ? `await ${expr}` : expr;
-      const typeAnnotation = buildTypeAnnotation(options, hasAwait);
-      const typedDecl = typeAnnotation
-        ? `const ${binding.instanceName}: ${typeAnnotation} = ${rhs};`
-        : `const ${binding.instanceName} = ${rhs};`;
-      ms.overwrite(start, end, `${typedDecl}\n${visibility}const ${name} = () => ${binding.instanceName};`);
-    }
-    found = true;
+  const binding = generation.module.bindings.get(name)!;
+  if (options.lazy) {
+    const annotation = generation.typeAnnotation(options);
+    const typed = annotation ? `let ${binding.instanceName}: ${annotation} | null = null;` : `let ${binding.instanceName} = null;`;
+    return [typed, `const ${binding.peekName} = () => ${binding.instanceName};`, `${visibility}const ${name} = () => {`, `  if (!${binding.instanceName}) ${binding.instanceName} = ${expression};`, `  return ${binding.instanceName};`, `};`].join("\n");
   }
-
-  return found;
+  const rhs = match.hasAwait ? `await ${expression}` : expression;
+  const annotation = generation.typeAnnotation(options, match.hasAwait);
+  const typed = annotation ? `const ${binding.instanceName}: ${annotation} = ${rhs};` : `const ${binding.instanceName} = ${rhs};`;
+  return `${typed}\n${visibility}const ${name} = () => ${binding.instanceName};`;
 }
