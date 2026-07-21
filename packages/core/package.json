@@ -34,8 +34,8 @@
     "release:ci": "pnpm publish --provenance"
   },
   "devDependencies": {
-    "tsdown": "^0.22.2",
+    "tsdown": "^0.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }

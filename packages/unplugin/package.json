@@ -52,20 +52,20 @@
   },
   "dependencies": {
     "magic-string": "^0.30.11",
-    "oxc-parser": "^0.134.0",
-    "unplugin": "^3.0.0",
-    "vite": "^8.0.16"
+    "oxc-parser": "^0.137.0",
+    "unplugin": "^3.2.0",
+    "vite": "^8.1.0"
   },
   "devDependencies": {
     "@compdi/core": "workspace:^",
-    "@rspack/cli": "^2.0.6",
-    "@rspack/core": "^2.0.6",
+    "@rspack/cli": "^2.1.1",
+    "@rspack/core": "^2.1.1",
     "@types/node": "^25.9.2",
-    "esbuild": "^0.28.0",
-    "rolldown": "^1.1.0",
-    "rollup": "^4.61.1",
-    "tsdown": "^0.22.2",
+    "esbuild": "^0.28.1",
+    "rolldown": "^1.1.3",
+    "rollup": "^4.62.2",
+    "tsdown": "^0.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }
