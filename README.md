@@ -108,7 +108,7 @@ import { createSingleton, vitePlugin }      from "compdi";               // ever
 | `defineSingleton({ target, deps, lazy: true })` | `() => T` | Lazy getter — instance created on first call |
 | `createTransient({ target, deps })` | `() => T` | Factory — new instance on every call |
 | `defineTransient({ target, deps })` | `() => T` | Deprecated alias of `createTransient` |
-| `createScoped({ target, deps }, contextId)` | `T` | Per-context instance (e.g. per request) |
+| `createScoped({ target, deps, context })` | `[ScopedProxy<T>, ScopedController<T, K>]` | Stable proxy and its scope controller |
 | `defineScoped({ target, deps })` | `ScopedAccessor<T>` | Deferred per-context accessor |
 | `defineAppTeardown(resources)` | `() => Promise<void>` | Async cleanup for all resources |
 

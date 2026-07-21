@@ -6,5 +6,13 @@ export {
   createScoped,
   defineScoped,
   defineAppTeardown,
+  type ContextualScopedOptions,
   type DiOptions,
+  type ReleasableScopedOptions,
+  type ScopedAccessor,
+  type ScopedController,
+  type ScopedLifecycle,
+  type ScopedProxy,
+  type ScopedReleaseHandler,
+  type ScopedReleaseResult,
 } from "@compdi/core";

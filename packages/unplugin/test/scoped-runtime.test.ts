@@ -8,6 +8,8 @@ interface Resource {
 type Context = object;
 
 let factoryCalls = 0;
+const syncReleases: Resource[] = [];
+const asyncReleases: Resource[] = [];
 
 export const useResource = defineScoped<Resource, Context>({
   factory: () => ({ id: ++factoryCalls }),
@@ -17,6 +19,23 @@ export const useResource = defineScoped<Resource, Context>({
 export const useAsyncResource = defineScoped<{ connected: boolean }, Context>({
   factory: async () => ({ connected: true }),
   deps: []
+});
+
+export const useSyncCleanup = defineScoped({
+  factory: () => ({ id: ++factoryCalls }),
+  deps: [],
+  onRelease: (instance, _context: Context) => {
+    syncReleases.push(instance);
+  }
+});
+
+export const useAsyncCleanup = defineScoped({
+  factory: () => ({ id: ++factoryCalls }),
+  deps: [],
+  onRelease: async (instance, _context: Context) => {
+    await Promise.resolve();
+    asyncReleases.push(instance);
+  }
 });
 
 describe("defineScoped runtime lifecycle", () => {
@@ -47,5 +66,20 @@ describe("defineScoped runtime lifecycle", () => {
     expect(useAsyncResource.peek(context)).toBe(value);
     await expect(value).resolves.toEqual({ connected: true });
     expect(useAsyncResource.release(context)).toBe(value);
+  });
+
+  it("types release from synchronous and asynchronous cleanup", async () => {
+    const syncContext = {};
+    const syncValue = useSyncCleanup(syncContext);
+    const syncReleased = useSyncCleanup.release(syncContext);
+    expect(syncReleased).toBe(syncValue);
+    expect(syncReleases).toEqual([syncValue]);
+
+    const asyncContext = {};
+    const asyncValue = useAsyncCleanup(asyncContext);
+    const asyncReleased = useAsyncCleanup.release(asyncContext);
+    expect(asyncReleased).toBeInstanceOf(Promise);
+    await expect(asyncReleased).resolves.toBe(asyncValue);
+    expect(asyncReleases).toEqual([asyncValue]);
   });
 });

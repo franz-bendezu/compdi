@@ -16,7 +16,7 @@ This package exports the macro signatures consumed by the Compdi build transform
 - `defineSingleton({ target, deps, lazy? })` / `defineSingleton({ factory, deps, lazy? })`
 - `createTransient({ target, deps })` / `createTransient({ factory, deps })`
 - `defineTransient({ target, deps })` / `defineTransient({ factory, deps })` (deprecated alias of `createTransient`)
-- `createScoped({ target, deps }, contextId)` / `createScoped({ factory, deps }, contextId)`
+- `createScoped({ target, deps, context })` / `createScoped({ factory, deps, context })`
 - `defineScoped({ target, deps })` / `defineScoped({ factory, deps })`
 - `defineAppTeardown(resources)`
 
@@ -47,6 +47,9 @@ class Service {
   constructor(private readonly db: Database) {}
 }
 
+interface Request {}
+declare const useRequest: () => Request;
+
 // Eager singleton
 const db = createSingleton({ target: Database, deps: [] });
 
@@ -67,7 +70,11 @@ const svc = createSvc();
 const makeSvc = defineTransient({ target: Service, deps: [db] });
 
 // Scoped — per-context instance
-const scopedSvc = createScoped({ target: Service, deps: [db] }, requestId);
+const [scopedSvc, scopedSvcScope] = createScoped({
+  target: Service,
+  deps: [db],
+  context: useRequest,
+});
 const getScopedSvc = defineScoped({ target: Service, deps: [db] });
 ```
 

@@ -27,6 +27,10 @@ export interface ParsedDiOptions {
   deps: string;
   /** Whether `lazy: true` was present */
   lazy: boolean;
+  /** Active-context resolver for contextual scoped proxies. */
+  context?: string;
+  /** Optional contextual scoped cleanup callback. */
+  onRelease?: string;
 }
 
 /**
@@ -67,6 +71,14 @@ export function parseDiOptions(objectSource: string): ParsedDiOptions | null {
   if (factoryKeyIndex >= 0) {
     const afterColon = inner.indexOf(":", factoryKeyIndex) + 1;
     result.factory = extractValueAt(inner, afterColon).trim();
+  }
+
+  for (const key of ["context", "onRelease"] as const) {
+    const keyIndex = inner.search(new RegExp(`\\b${key}\\s*:`));
+    if (keyIndex >= 0) {
+      const afterColon = inner.indexOf(":", keyIndex) + 1;
+      result[key] = extractValueAt(inner, afterColon).trim();
+    }
   }
 
   // Extract `deps: [...]`
@@ -122,6 +134,8 @@ function extractValueAt(source: string, start: number): string {
  */
 export interface MacroMatch {
   name: string;
+  /** Second binding in `[value, scope]` declarations. */
+  scopeName?: string;
   options: ParsedDiOptions;
   /** Whether the macro call was preceded by `await` (e.g. `await createSingleton(...)`) */
   hasAwait: boolean;
@@ -136,14 +150,19 @@ export function* collectMacroMatches(
   macroName: string
 ): Generator<MacroMatch> {
   const headRegex = new RegExp(
-    `export\\s+const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(await\\s+)?${macroName}\\s*(?:<([^>]*)>)?\\s*\\(`,
+    `export\\s+const\\s+(?:([A-Za-z_$][\\w$]*)|\\[\\s*([A-Za-z_$][\\w$]*)\\s*,\\s*([A-Za-z_$][\\w$]*)\\s*\\])\\s*=\\s*(await\\s+)?${macroName}\\s*(?:<([^>]*)>)?\\s*\\(`,
     "g"
   );
   let m = headRegex.exec(code);
   while (m) {
-    const name = m[1];
-    const hasAwait = m[2] !== undefined;
-    const rawTypeArgs = m[3];
+    const name = m[1] ?? m[2];
+    const scopeName = m[3];
+    if (scopeName && macroName !== "createScoped") {
+      m = headRegex.exec(code);
+      continue;
+    }
+    const hasAwait = m[4] !== undefined;
+    const rawTypeArgs = m[5];
     const typeArgs = rawTypeArgs
       ? rawTypeArgs.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
@@ -160,7 +179,7 @@ export function* collectMacroMatches(
     const argsSource = code.slice(openParen + 1, closeParen).trim();
     const options = parseDiOptions(argsSource);
     if (options) {
-      yield { name, options, hasAwait, typeArgs, start: m.index, end: endIndex };
+      yield { name, scopeName, options, hasAwait, typeArgs, start: m.index, end: endIndex };
     }
     headRegex.lastIndex = endIndex;
     m = headRegex.exec(code);
@@ -260,4 +279,3 @@ export function resolveTeardownResource(
       return { expression: `${resource}()`, awaitExpression: false };
   }
 }
-

@@ -67,7 +67,7 @@ const useAnalytics = defineSingleton({ target: Analytics, deps: [db], lazy: true
 - `defineSingleton({ target, deps })` / `defineSingleton({ ..., lazy: true })` for lazy
 - `createTransient({ target, deps })`
 - `defineTransient({ target, deps })` (deprecated alias of `createTransient`)
-- `createScoped({ target, deps }, contextId)`
+- `createScoped({ target, deps, context })`
 - `defineScoped({ target, deps })`
 - `defineAppTeardown(resources)`
 

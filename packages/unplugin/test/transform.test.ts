@@ -105,6 +105,15 @@ describe("transformCompdiMacros", () => {
           .toMatchFileSnapshot(snapshot("scoped/define"));
       });
     });
+
+    describe("createScoped with a context resolver", () => {
+      it("generates a contextual proxy without macro calls", async () => {
+        const code = runFixture("scoped/create-contextual.input.ts");
+        expect(code).not.toMatch(/\bcreateScoped\s*\(/);
+        await expect(code)
+          .toMatchFileSnapshot(snapshot("scoped/create-contextual"));
+      });
+    });
   });
 
   describe("teardown", () => {

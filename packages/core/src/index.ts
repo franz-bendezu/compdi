@@ -12,6 +12,38 @@ export interface DiOptions<T, TDeps extends readonly unknown[]> {
   lazy?: boolean;
 }
 
+/** Cleanup callback supported by scoped lifecycle options. */
+export type ScopedReleaseHandler<T, K> = (
+  instance: T,
+  context: K
+) => void | PromiseLike<void>;
+
+/** Resolves the return type of `release` from a cleanup callback or result. */
+export type ScopedReleaseResult<T, TOnRelease> = TOnRelease extends (
+  ...args: never[]
+) => infer TResult
+  ? TResult extends PromiseLike<unknown>
+    ? Promise<T | undefined>
+    : T | undefined
+  : TOnRelease extends PromiseLike<unknown>
+    ? Promise<T | undefined>
+    : T | undefined;
+
+/** Shared non-creating lifecycle operations for scoped values. */
+export interface ScopedLifecycle<T, K = unknown, TRelease = T | undefined> {
+  /** Reports whether a value exists without creating one. */
+  has(contextId: K): boolean;
+
+  /** Returns an existing value without creating one. */
+  peek(contextId: K): T | undefined;
+
+  /**
+   * Removes the cached value and performs configured cleanup. Its return type
+   * is synchronous unless the configured cleanup returns a promise.
+   */
+  release(contextId: K): TRelease;
+}
+
 /**
  * Accessor returned by {@link defineScoped}.
  *
@@ -27,17 +59,55 @@ export interface DiOptions<T, TDeps extends readonly unknown[]> {
  * }
  * ```
  */
-export interface ScopedAccessor<T, K = unknown> {
+export interface ScopedAccessor<T, K = unknown, TRelease = T | undefined>
+  extends ScopedLifecycle<T, K, TRelease> {
   (contextId: K): T;
+}
 
-  /** Reports whether a value exists without creating one. */
-  has(contextId: K): boolean;
+/** Non-creating lifecycle operations returned alongside a scoped proxy. */
+export interface ScopedController<T, K, TRelease = T | undefined>
+  extends ScopedLifecycle<T, K, TRelease> {}
 
-  /** Returns an existing value without creating one. */
-  peek(contextId: K): T | undefined;
+/** A stable object that forwards operations to the value for the active context. */
+export type ScopedProxy<T extends object> = T;
 
-  /** Removes and returns an existing value without creating one. */
-  release(contextId: K): T | undefined;
+/** Options for a stable contextual proxy created by {@link createScoped}. */
+export interface ContextualScopedOptions<
+  T extends object,
+  K,
+  TDeps extends readonly unknown[],
+  TCleanupResult extends void | PromiseLike<void> = void,
+> {
+  target?: new (...deps: TDeps) => T;
+  factory?: (...deps: TDeps) => T;
+  deps?: TDeps;
+
+  /** Returns the currently active context. It is called lazily on proxy operations. */
+  context: () => K;
+
+  /**
+   * Optional cleanup invoked by `scope.release(context)` after the cached
+   * value is removed. Its return type determines whether `release` is
+   * synchronous or returns a promise.
+   */
+  onRelease?: (instance: T, context: K) => TCleanupResult;
+}
+
+/**
+ * Options for a scoped accessor with automatic release cleanup. Synchronous
+ * cleanup produces a synchronous `release`; asynchronous cleanup produces a
+ * promise-returning `release`.
+ */
+export interface ReleasableScopedOptions<
+  T,
+  K,
+  TDeps extends readonly unknown[],
+  TCleanupResult extends void | PromiseLike<void>,
+> {
+  target?: new (...deps: TDeps) => T;
+  factory?: (...deps: TDeps) => T;
+  deps?: TDeps;
+  onRelease: (instance: T, context: K) => TCleanupResult;
 }
 
 function macroNotTransformed(name: string): never {
@@ -189,41 +259,46 @@ export function defineTransient<T>(options: DiOptions<T, any>): () => T | Promis
 
 // createScoped: inferred from C/F, or explicit <T, K> for interface+context narrowing
 /**
- * Returns the value associated with a context, creating it when absent.
- * Repeated calls from the same generated binding and context reuse the value.
+ * Creates a stable contextual proxy that resolves its active context lazily on
+ * property operations.
  *
  * @example
  * ```ts
- * const service = createScoped({ target: Service, deps: [database] }, request);
+ * const [database, databaseScope] = createScoped({
+ *   factory: createDatabase,
+ *   context: useRequest,
+ *   onRelease: database => database.close()
+ * });
+ * await databaseScope.release(request);
  * ```
  */
-export function createScoped<C extends new (...args: any[]) => any>(
-  options: { target: C; deps?: NoInfer<ConstructorParameters<C>> },
-  contextId: unknown
-): InstanceType<C>;
-export function createScoped<F extends (...args: any[]) => Promise<any>>(
-  options: { factory: F; deps?: NoInfer<Parameters<F>> },
-  contextId: unknown
-): ReturnType<F>;
-export function createScoped<F extends (...args: any[]) => any>(
-  options: { factory: F; deps?: NoInfer<Parameters<F>> },
-  contextId: unknown
-): ReturnType<F>;
-export function createScoped<T, K = unknown>(
-  options: { target: new (...args: any[]) => T; deps?: readonly any[] },
-  contextId: K
-): T;
-export function createScoped<T, K = unknown>(
-  options: { factory: (...args: any[]) => Promise<T>; deps?: readonly any[] },
-  contextId: K
-): Promise<T>;
-export function createScoped<T, K = unknown>(
-  options: { factory: (...args: any[]) => T; deps?: readonly any[] },
-  contextId: K
-): T;
-export function createScoped<T>(options: DiOptions<T, any>, contextId: unknown): T | Promise<T> {
+export function createScoped<
+  T extends object,
+  K,
+  TDeps extends readonly unknown[],
+  TCleanupResult extends void | PromiseLike<void>,
+>(
+  options: ContextualScopedOptions<T, K, TDeps, TCleanupResult> & {
+    onRelease: (instance: T, context: K) => TCleanupResult;
+  }
+): readonly [
+  ScopedProxy<T>,
+  ScopedController<T, K, ScopedReleaseResult<T, TCleanupResult>>,
+];
+export function createScoped<
+  T extends object,
+  K,
+  TDeps extends readonly unknown[],
+>(
+  options: ContextualScopedOptions<T, K, TDeps> & { onRelease?: undefined }
+): readonly [ScopedProxy<T>, ScopedController<T, K>];
+export function createScoped<T extends object, K, TDeps extends readonly unknown[]>(
+  options: ContextualScopedOptions<T, K, TDeps, void | PromiseLike<void>>
+): readonly [
+  ScopedProxy<T>,
+  ScopedController<T, K, T | undefined | Promise<T | undefined>>,
+] {
   void options;
-  void contextId;
   return macroNotTransformed("createScoped");
 }
 
@@ -241,6 +316,14 @@ export function createScoped<T>(options: DiOptions<T, any>, contextId: unknown):
  * const service = useService(request);
  * ```
  */
+export function defineScoped<
+  T,
+  K,
+  TDeps extends readonly unknown[],
+  TCleanupResult extends void | PromiseLike<void>,
+>(
+  options: ReleasableScopedOptions<T, K, TDeps, TCleanupResult>
+): ScopedAccessor<T, K, ScopedReleaseResult<T, TCleanupResult>>;
 export function defineScoped<C extends new (...args: any[]) => any>(
   options: { target: C; deps?: NoInfer<ConstructorParameters<C>> }
 ): ScopedAccessor<InstanceType<C>>;
