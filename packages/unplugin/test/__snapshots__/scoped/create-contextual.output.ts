@@ -9,16 +9,17 @@ interface Database {
 }
 
 declare const useRequest: () => RequestContext;
-declare const createDatabase: () => Database;
+declare const connectionString: string;
+declare const createDatabase: (context: RequestContext, connectionString: string) => Database;
 
 const __getContext_database = useRequest;
-const __createScoped_database = () => (createDatabase)();
+const __createScoped_database = (__context: ReturnType<typeof __getContext_database>) => (createDatabase)(__context, connectionString);
 const __registry_database = new Map<ReturnType<typeof __getContext_database>, ReturnType<typeof __createScoped_database>>();
 const __resolveScoped_database = () => {
   const __context = __getContext_database();
   const __existing = __registry_database.get(__context);
   if (__existing !== undefined) return __existing;
-  const __instance = __createScoped_database();
+  const __instance = __createScoped_database(__context);
   __registry_database.set(__context, __instance);
   return __instance;
 };

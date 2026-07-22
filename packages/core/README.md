@@ -71,7 +71,7 @@ const makeSvc = defineTransient({ target: Service, deps: [db] });
 
 // Scoped — per-context instance
 const [scopedSvc, scopedSvcScope] = createScoped({
-  target: Service,
+  factory: (request, database) => new Service(request, database),
   deps: [db],
   context: useRequest,
 });

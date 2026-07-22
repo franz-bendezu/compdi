@@ -79,7 +79,8 @@ export interface ContextualScopedOptions<
   TCleanupResult extends void | PromiseLike<void> = void,
 > {
   target?: new (...deps: TDeps) => T;
-  factory?: (...deps: TDeps) => T;
+  /** Creates the value for the active context. The resolved context is injected first. */
+  factory?: (context: K, ...deps: TDeps) => T;
   deps?: TDeps;
 
   /** Returns the currently active context. It is called lazily on proxy operations. */
@@ -265,7 +266,8 @@ export function defineTransient<T>(options: DiOptions<T, any>): () => T | Promis
  * @example
  * ```ts
  * const [database, databaseScope] = createScoped({
- *   factory: createDatabase,
+ *   factory: (request, config) => createDatabase(request, config),
+ *   deps: [config],
  *   context: useRequest,
  *   onRelease: database => database.close()
  * });

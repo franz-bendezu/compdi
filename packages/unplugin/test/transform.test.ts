@@ -110,6 +110,8 @@ describe("transformCompdiMacros", () => {
       it("generates a contextual proxy without macro calls", async () => {
         const code = runFixture("scoped/create-contextual.input.ts");
         expect(code).not.toMatch(/\bcreateScoped\s*\(/);
+        expect(code).toContain("const __createScoped_database = (__context:");
+        expect(code).toContain("(createDatabase)(__context, connectionString)");
         await expect(code)
           .toMatchFileSnapshot(snapshot("scoped/create-contextual"));
       });

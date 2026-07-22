@@ -10,11 +10,12 @@ interface Database {
 }
 
 declare const useRequest: () => RequestContext;
-declare const createDatabase: () => Database;
+declare const connectionString: string;
+declare const createDatabase: (context: RequestContext, connectionString: string) => Database;
 
 export const [database, databaseScope] = createScoped({
   factory: createDatabase,
-  deps: [],
+  deps: [connectionString],
   context: useRequest,
   onRelease: async (instance) => instance.close()
 });

@@ -89,13 +89,13 @@ export function buildContextualScopedProxy(
 
   return [
     `const ${contextVar} = ${contextExpr};`,
-    `const ${createVar} = () => ${instantiationExpr};`,
+    `const ${createVar} = (__context: ${ctxType}) => ${instantiationExpr};`,
     `const ${mapVar} = new Map${mapType}();`,
     `const ${resolveVar} = () => {`,
     `  const __context = ${contextVar}();`,
     `  const __existing = ${mapVar}.get(__context);`,
     `  if (__existing !== undefined) return __existing;`,
-    `  const __instance = ${createVar}();`,
+    `  const __instance = ${createVar}(__context);`,
     `  ${mapVar}.set(__context, __instance);`,
     `  return __instance;`,
     `};`,
@@ -138,9 +138,9 @@ type ScopedMatch = OptionsMacroMatch<"createScoped" | "defineScoped">;
 
 export function generateScopedExpression(match: ScopedMatch, generation: MacroGenerationContext): string {
   const options = match.options;
-  const expression = generation.instantiate(options);
   const suffix = generation.nextUnique();
   if (match.macroName === "defineScoped") {
+    const expression = generation.instantiate(options);
     const getter = buildScopedGetter(
       `compdi_${suffix}`,
       expression,
@@ -152,6 +152,7 @@ export function generateScopedExpression(match: ScopedMatch, generation: MacroGe
     return `(() => { ${getter} return __getScoped_compdi_${suffix}; })()`;
   }
   if (!options.context) throw new Error(`[compdi] createScoped at ${generation.module.id} requires a static \`context\` option outside tuple declarations`);
+  const expression = generation.instantiateContextual(options, "__context");
   const name = `compdi_${suffix}`;
   const scope = `scope_${suffix}`;
   const generated = buildContextualScopedProxy(
@@ -169,22 +170,25 @@ export function generateScopedExpression(match: ScopedMatch, generation: MacroGe
 
 export function generateScopedDeclaration(match: ScopedMatch & DeclarationMacroMatch, generation: MacroGenerationContext): string {
   const options = match.options;
-  const expression = generation.instantiate(options);
   const name = match.name;
-  if (match.macroName === "defineScoped") return [
-    buildScopedGetter(
-      name,
-      expression,
-      "__ctx",
-      generation.typeArg(match, 1),
-      generation.typeArg(match, 0),
-      options.onRelease ? generation.renderNode(options.onRelease) : undefined
-    ),
-    `${match.exported ? "export " : ""}const ${name} = __getScoped_${name};`
-  ].join("\n");
+  if (match.macroName === "defineScoped") {
+    const expression = generation.instantiate(options);
+    return [
+      buildScopedGetter(
+        name,
+        expression,
+        "__ctx",
+        generation.typeArg(match, 1),
+        generation.typeArg(match, 0),
+        options.onRelease ? generation.renderNode(options.onRelease) : undefined
+      ),
+      `${match.exported ? "export " : ""}const ${name} = __getScoped_${name};`
+    ].join("\n");
+  }
   if (!match.scopeName || !options.context) {
     throw new Error(`[compdi] createScoped at ${generation.module.id} requires a two-item binding and \`context\` option`);
   }
+  const expression = generation.instantiateContextual(options, "__context");
   return buildContextualScopedProxy(
     name,
     match.scopeName,

@@ -25,7 +25,10 @@ let factoryCalls = 0;
 const disposed: Resource[] = [];
 
 export const [resource, resourceScope] = createScoped({
-  factory: () => new Resource(++factoryCalls),
+  factory: (context) => {
+    factoryCalls++;
+    return new Resource(context.id);
+  },
   context: () => {
     contextCalls++;
     return activeContext;
@@ -58,6 +61,7 @@ describe("contextual createScoped runtime behavior", () => {
     const firstContext = activeContext;
     expect(resource.increment()).toBe(2);
     const first = resourceScope.peek(firstContext)!;
+    expect(first.contextId).toBe(firstContext.id);
     expect(first.value).toBe(2);
     expect(resource.doubled).toBe(4);
 
@@ -70,6 +74,7 @@ describe("contextual createScoped runtime behavior", () => {
     activeContext = { id: 2 };
     expect(resource.value).toBe(1);
     const second = resourceScope.peek(activeContext)!;
+    expect(second.contextId).toBe(activeContext.id);
     expect(second).not.toBe(first);
 
     activeContext = firstContext;

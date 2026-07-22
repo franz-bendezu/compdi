@@ -52,6 +52,15 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
     if (options.factory) return `(${renderNode(options.factory)})(${args})`;
     throw new Error("unreachable");
   };
+  const instantiateContextual = (options: ParsedDiOptions, contextExpression: string): string => {
+    const args = deps(options);
+    if (options.target) return `new ${renderNode(options.target)}(${args})`;
+    if (options.factory) {
+      const factoryArgs = args ? `${contextExpression}, ${args}` : contextExpression;
+      return `(${renderNode(options.factory)})(${factoryArgs})`;
+    }
+    throw new Error("unreachable");
+  };
   const typeAnnotation = (options: ParsedDiOptions, awaited = false): string => {
     if (options.target?.type === "Identifier") return options.target.name;
     if (options.factory?.type === "Identifier") {
@@ -64,6 +73,7 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
     module: context,
     renderNode,
     instantiate,
+    instantiateContextual,
     typeArg,
     typeAnnotation,
     nextUnique
