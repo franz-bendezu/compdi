@@ -1,8 +1,9 @@
-import { parseSync } from "oxc-parser";
+import { parseSync, visitorKeys } from "oxc-parser";
 import type {
-  ArrayExpression,
+  ArrowFunctionExpression,
   CallExpression,
   Expression,
+  Function as OxcFunction,
   ImportDeclaration,
   ImportSpecifier,
   Node,
@@ -30,8 +31,7 @@ export interface ParsedDiOptions {
   onRelease?: Expression;
 }
 
-export interface MacroMatch {
-  macroName: MacroName;
+interface MacroMatchBase {
   localName: string;
   name?: string;
   exported: boolean;
@@ -45,6 +45,30 @@ export interface MacroMatch {
   declaration?: Node;
   start: number;
   end: number;
+}
+
+export type MacroMatch = {
+  [Name in MacroName]: MacroMatchBase & { macroName: Name }
+}[MacroName];
+
+type OptionsMacroName = Exclude<MacroName, "defineAppTeardown">;
+
+export type OptionsMacroMatch<Name extends OptionsMacroName = OptionsMacroName> =
+  Extract<MacroMatch, { macroName: Name }> & {
+  options: ParsedDiOptions;
+  };
+
+export type DeclarationMacroMatch<Match extends MacroMatch = MacroMatch> = Match & {
+  name: string;
+  declaration: Node;
+};
+
+export function hasMacroOptions(match: MacroMatch): match is OptionsMacroMatch {
+  return match.macroName !== "defineAppTeardown" && match.options !== undefined;
+}
+
+export function isDeclarationMacro(match: MacroMatch): match is DeclarationMacroMatch {
+  return match.name !== undefined && match.declaration !== undefined;
 }
 
 export interface MacroImport {
@@ -97,9 +121,8 @@ function parseOptions(id: string, code: string, macro: string, call: CallExpress
     throw diagnostic(id, code, deps, macro, "`deps` must be an array literal");
   }
   const depElements = deps ? deps.elements.filter((node) => node !== null) : [];
-  if (depElements.some((node) => node.type === "SpreadElement")) {
-    throw diagnostic(id, code, deps!, macro, "dependency spreads are not supported");
-  }
+  const spread = depElements.find((node) => node.type === "SpreadElement");
+  if (spread) throw diagnostic(id, code, spread, macro, "dependency spreads are not supported");
   const depNodes = depElements.filter((node): node is Expression => node.type !== "SpreadElement");
   const lazyNode = values.get("lazy");
   const lazy = lazyNode?.type === "Literal" && lazyNode.value === true;
@@ -119,19 +142,25 @@ function patternNames(pattern: Node | null | undefined, names: Set<string>): voi
   else if (pattern.type === "AssignmentPattern") patternNames(pattern.left, names);
   else if (pattern.type === "ArrayPattern") for (const item of pattern.elements) patternNames(item, names);
   else if (pattern.type === "ObjectPattern") for (const p of pattern.properties) patternNames(p.value ?? p.argument, names);
+  else if (pattern.type === "TSParameterProperty") patternNames(pattern.parameter, names);
+}
+
+function isFunctionLike(node: Node): node is OxcFunction | ArrowFunctionExpression {
+  return node.type === "FunctionDeclaration" || node.type === "FunctionExpression" ||
+    node.type === "TSDeclareFunction" || node.type === "TSEmptyBodyFunctionExpression" ||
+    node.type === "ArrowFunctionExpression";
 }
 
 function scopeBindings(node: Node): Set<string> {
   const names = new Set<string>();
-  if (/Function/.test(node.type) || node.type === "ArrowFunctionExpression") {
-    const fn = node as Node & { params?: Node[]; id?: Node | null };
-    for (const param of fn.params ?? []) patternNames(param, names);
-    if (fn.id) patternNames(fn.id, names);
+  if (isFunctionLike(node)) {
+    for (const param of node.params) patternNames(param, names);
+    if (node.id) patternNames(node.id, names);
   }
-  const body: Node[] = node.type === "Program" || node.type === "BlockStatement"
+  const body = node.type === "Program" || node.type === "BlockStatement"
     ? node.body
-    : ((node as Node & { body?: { body?: Node[] } }).body?.body ?? []);
-  for (const statement of body ?? []) {
+    : isFunctionLike(node) && node.body?.type === "BlockStatement" ? node.body.body : [];
+  for (const statement of body) {
     const decl = statement.type === "ExportNamedDeclaration" ? statement.declaration : statement;
     if (decl?.type === "VariableDeclaration") for (const d of decl.declarations) patternNames(d.id, names);
     else if (decl?.type === "FunctionDeclaration" || decl?.type === "ClassDeclaration") patternNames(decl.id, names);
@@ -141,15 +170,25 @@ function scopeBindings(node: Node): Set<string> {
 
 function nodeChildren(node: Node): Node[] {
   const children: Node[] = [];
-  for (const [key, value] of Object.entries(node as unknown as Record<string, unknown>)) {
-    if (key === "parent" || key === "type" || key === "start" || key === "end") continue;
+  for (const key of visitorKeys[node.type] ?? []) {
+    const value: unknown = Reflect.get(node, key);
     if (Array.isArray(value)) {
-      for (const item of value) if (item && typeof item === "object" && typeof item.type === "string") children.push(item);
-    } else if (value && typeof value === "object" && typeof (value as any).type === "string") {
-      children.push(value as Node);
+      for (const item of value) if (isNode(item)) children.push(item);
+    } else if (isNode(value)) {
+      children.push(value);
     }
   }
   return children;
+}
+
+function isNode(value: unknown): value is Node {
+  return typeof value === "object" && value !== null && "type" in value &&
+    typeof Reflect.get(value, "type") === "string" &&
+    typeof Reflect.get(value, "start") === "number" && typeof Reflect.get(value, "end") === "number";
+}
+
+function isMacroName(value: string): value is MacroName {
+  return MACROS.has(value);
 }
 
 function createBindingInfo(name: string, kind: BindingKind): BindingInfo {
@@ -175,8 +214,8 @@ export function analyzeModule(code: string, id: string): TransformContext | null
       const imported = specifier.imported.type === "Identifier"
         ? specifier.imported.name
         : specifier.imported.value;
-      if (!MACROS.has(imported)) continue;
-      localMacros.set(specifier.local.name, imported as MacroName);
+      if (!isMacroName(imported)) continue;
+      localMacros.set(specifier.local.name, imported);
       macroSpecifiers.push(specifier);
     }
     if (macroSpecifiers.length) imports.push({ node: statement, specifiers: statement.specifiers, macroSpecifiers });
@@ -187,7 +226,7 @@ export function analyzeModule(code: string, id: string): TransformContext | null
   const scopes: Set<string>[] = [];
   const ancestors: Node[] = [];
   const visit = (node: Node): void => {
-    const opensScope = node.type === "Program" || node.type === "BlockStatement" || /Function/.test(node.type) || node.type === "ArrowFunctionExpression";
+    const opensScope = node.type === "Program" || node.type === "BlockStatement" || isFunctionLike(node);
     if (opensScope) scopes.push(scopeBindings(node));
     if (node.type === "CallExpression" && node.callee?.type === "Identifier") {
       const localName = node.callee.name;
@@ -201,8 +240,9 @@ export function analyzeModule(code: string, id: string): TransformContext | null
         const declarator = [...ancestors].reverse().find((a) => a.type === "VariableDeclarator");
         let declarationIndex = ancestors.length - 1;
         while (declarationIndex >= 0 && ancestors[declarationIndex].type !== "VariableDeclaration") declarationIndex -= 1;
-        const declaration = declarationIndex >= 0
-          ? ancestors[declarationIndex] as VariableDeclaration
+        const declarationCandidate = declarationIndex >= 0 ? ancestors[declarationIndex] : undefined;
+        const declaration: VariableDeclaration | undefined = declarationCandidate?.type === "VariableDeclaration"
+          ? declarationCandidate
           : undefined;
         const exportNode = declarationIndex > 0 && ancestors[declarationIndex - 1].type === "ExportNamedDeclaration"
           ? ancestors[declarationIndex - 1]
@@ -243,17 +283,25 @@ export function analyzeModule(code: string, id: string): TransformContext | null
   visit(program);
 
   const bindings = new Map<string, BindingInfo>();
-  const kinds: Partial<Record<MacroName, BindingKind>> = {
-    createSingleton: "create-singleton", defineSingleton: "define-singleton",
-    createTransient: "create-transient", defineTransient: "define-transient",
-    createScoped: "create-scoped", defineScoped: "define-scoped"
-  };
   for (const match of matches) {
-    if (!match.name || !match.declaration || !kinds[match.macroName]) continue;
-    const kind = match.macroName === "defineSingleton" && match.options?.lazy ? "define-singleton-lazy" : kinds[match.macroName]!;
+    if (!match.name || !match.declaration) continue;
+    const kind = bindingKindFor(match);
+    if (!kind) continue;
     bindings.set(match.name, createBindingInfo(match.name, kind));
   }
   return { code, id, program, matches, imports, bindings };
+}
+
+function bindingKindFor(match: MacroMatch): BindingKind | undefined {
+  switch (match.macroName) {
+    case "createSingleton": return "create-singleton";
+    case "defineSingleton": return match.options?.lazy ? "define-singleton-lazy" : "define-singleton";
+    case "createTransient": return "create-transient";
+    case "defineTransient": return "define-transient";
+    case "createScoped": return "create-scoped";
+    case "defineScoped": return "define-scoped";
+    case "defineAppTeardown": return undefined;
+  }
 }
 
 export function resolveDependencyExpression(dependency: string, bindings: ReadonlyMap<string, BindingInfo>): string {

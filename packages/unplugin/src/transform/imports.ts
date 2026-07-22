@@ -15,7 +15,8 @@ export function collectImportReplacements(context: TransformContext, ms: MagicSt
     // Rebuild only the specifier list. This keeps import attributes and the
     // original module quote style while avoiding comma-range edge cases.
     const first = entry.specifiers[0];
-    const last = entry.specifiers.at(-1)!;
+    const last = entry.specifiers.at(-1);
+    if (!first || !last) throw new Error("[compdi] Import metadata unexpectedly has no specifiers");
     ms.overwrite(first.start, last.end, keep.map((specifier) => context.code.slice(specifier.start, specifier.end)).join(", "));
   }
 }

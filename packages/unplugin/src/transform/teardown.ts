@@ -1,8 +1,10 @@
-import type { MacroMatch } from "./context";
+import type { DeclarationMacroMatch, MacroMatch } from "./context";
 import { resolveTeardownResource } from "./context";
 import type { MacroGenerationContext } from "./generation";
 
-export function generateTeardownExpression(match: MacroMatch, generation: MacroGenerationContext, indent = ""): string {
+type TeardownMatch = Extract<MacroMatch, { macroName: "defineAppTeardown" }>;
+
+export function generateTeardownExpression(match: TeardownMatch, generation: MacroGenerationContext, indent = ""): string {
   const lines = (match.resources ?? []).flatMap((node, index) => {
     const raw = generation.renderNode(node);
     const resolved = resolveTeardownResource(node.type === "Identifier" ? node.name : raw, generation.module.bindings);
@@ -19,6 +21,6 @@ export function generateTeardownExpression(match: MacroMatch, generation: MacroG
   return [`${indent}async () => {`, `${indent}  const tasks = [];`, ...lines, `${indent}  await Promise.allSettled(tasks);`, `${indent}}`].join("\n");
 }
 
-export function generateTeardownDeclaration(match: MacroMatch, generation: MacroGenerationContext): string {
+export function generateTeardownDeclaration(match: TeardownMatch & DeclarationMacroMatch, generation: MacroGenerationContext): string {
   return `${match.exported ? "export " : ""}const ${match.name} = ${generateTeardownExpression(match, generation)};`;
 }

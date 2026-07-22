@@ -1,8 +1,10 @@
-import type { MacroMatch } from "./context";
+import type { DeclarationMacroMatch, OptionsMacroMatch } from "./context";
 import type { MacroGenerationContext } from "./generation";
 
-export function generateSingletonExpression(match: MacroMatch, generation: MacroGenerationContext): string {
-  const options = match.options!;
+type SingletonMatch = OptionsMacroMatch<"createSingleton" | "defineSingleton">;
+
+export function generateSingletonExpression(match: SingletonMatch, generation: MacroGenerationContext): string {
+  const options = match.options;
   const expression = generation.instantiate(options);
   if (match.macroName === "createSingleton") return match.hasAwait ? `await ${expression}` : expression;
 
@@ -13,16 +15,17 @@ export function generateSingletonExpression(match: MacroMatch, generation: Macro
   return `(() => { const ${value} = ${expression}; return () => ${value}; })()`;
 }
 
-export function generateSingletonDeclaration(match: MacroMatch, generation: MacroGenerationContext): string {
+export function generateSingletonDeclaration(match: SingletonMatch & DeclarationMacroMatch, generation: MacroGenerationContext): string {
   const visibility = match.exported ? "export " : "";
-  const name = match.name!;
-  const options = match.options!;
+  const name = match.name;
+  const options = match.options;
   const expression = generation.instantiate(options);
   if (match.macroName === "createSingleton") {
     return `${visibility}const ${name} = ${match.hasAwait ? `await ${expression}` : expression};`;
   }
 
-  const binding = generation.module.bindings.get(name)!;
+  const binding = generation.module.bindings.get(name);
+  if (!binding) throw new Error(`[compdi] Missing binding metadata for ${name}`);
   if (options.lazy) {
     const annotation = generation.typeAnnotation(options);
     const typed = annotation ? `let ${binding.instanceName}: ${annotation} | null = null;` : `let ${binding.instanceName} = null;`;

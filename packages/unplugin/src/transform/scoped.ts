@@ -1,3 +1,5 @@
+import type { DeclarationMacroMatch, OptionsMacroMatch } from "./context";
+import type { MacroGenerationContext } from "./generation";
 
 /**
  * Scoped DI: one instance per contextId, per binding.
@@ -132,8 +134,10 @@ export function buildContextualScopedProxy(
   ].filter((line) => line !== "").join("\n");
 }
 
-export function generateScopedExpression(match: MacroMatch, generation: MacroGenerationContext): string {
-  const options = match.options!;
+type ScopedMatch = OptionsMacroMatch<"createScoped" | "defineScoped">;
+
+export function generateScopedExpression(match: ScopedMatch, generation: MacroGenerationContext): string {
+  const options = match.options;
   const expression = generation.instantiate(options);
   const suffix = generation.nextUnique();
   if (match.macroName === "defineScoped") {
@@ -163,10 +167,10 @@ export function generateScopedExpression(match: MacroMatch, generation: MacroGen
   return `(() => { ${generated} return [${name}, ${scope}] as const; })()`;
 }
 
-export function generateScopedDeclaration(match: MacroMatch, generation: MacroGenerationContext): string {
-  const options = match.options!;
+export function generateScopedDeclaration(match: ScopedMatch & DeclarationMacroMatch, generation: MacroGenerationContext): string {
+  const options = match.options;
   const expression = generation.instantiate(options);
-  const name = match.name!;
+  const name = match.name;
   if (match.macroName === "defineScoped") return [
     buildScopedGetter(
       name,
@@ -192,5 +196,3 @@ export function generateScopedDeclaration(match: MacroMatch, generation: MacroGe
     options.onRelease ? generation.renderNode(options.onRelease) : undefined
   );
 }
-import type { MacroMatch } from "./context";
-import type { MacroGenerationContext } from "./generation";

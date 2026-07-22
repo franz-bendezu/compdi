@@ -1,7 +1,7 @@
 import type MagicString from "magic-string";
 import type { Span } from "oxc-parser";
-import type { MacroMatch, ParsedDiOptions, TransformContext } from "./context";
-import { resolveDependencyExpression } from "./context";
+import type { DeclarationMacroMatch, MacroMatch, ParsedDiOptions, TransformContext } from "./context";
+import { hasMacroOptions, isDeclarationMacro, resolveDependencyExpression } from "./context";
 import type { MacroGenerationContext } from "./generation";
 import { generateScopedDeclaration, generateScopedExpression } from "./scoped";
 import { generateSingletonDeclaration, generateSingletonExpression } from "./singletons";
@@ -38,10 +38,13 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
     return output + context.code.slice(cursor, end);
   };
   const renderNode = (node: Span): string => renderRange(node.start, node.end);
-  const typeArg = (match: MacroMatch, index: number): string | undefined => match.typeArgs[index] ? renderNode(match.typeArgs[index]) : undefined;
+  const typeArg = (match: MacroMatch, index: number): string | undefined => {
+    const argument = match.typeArgs[index];
+    return argument ? renderNode(argument) : undefined;
+  };
   const deps = (options: ParsedDiOptions): string => options.deps.map((node) => {
     const raw = renderNode(node);
-    return resolveDependencyExpression(node.type === "Identifier" ? node.name! : raw, context.bindings);
+    return resolveDependencyExpression(node.type === "Identifier" ? node.name : raw, context.bindings);
   }).join(", ");
   const instantiate = (options: ParsedDiOptions): string => {
     const args = deps(options);
@@ -50,7 +53,7 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
     throw new Error("unreachable");
   };
   const typeAnnotation = (options: ParsedDiOptions, awaited = false): string => {
-    if (options.target?.type === "Identifier") return options.target.name!;
+    if (options.target?.type === "Identifier") return options.target.name;
     if (options.factory?.type === "Identifier") {
       const inner = `ReturnType<typeof ${options.factory.name}>`;
       return awaited ? `Awaited<${inner}>` : inner;
@@ -67,25 +70,27 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
   };
 
   const expressionFor = (match: MacroMatch): string => {
+    if (match.macroName === "defineAppTeardown") return generateTeardownExpression(match, generation);
+    if (!hasMacroOptions(match)) throw new Error(`[compdi] Missing options for ${match.macroName}`);
     switch (match.macroName) {
       case "createSingleton": case "defineSingleton": return generateSingletonExpression(match, generation);
       case "createTransient": case "defineTransient": return generateTransientExpression(match, generation);
       case "createScoped": case "defineScoped": return generateScopedExpression(match, generation);
-      case "defineAppTeardown": return generateTeardownExpression(match, generation);
     }
   };
 
-  const declarationFor = (match: MacroMatch): string => {
+  const declarationFor = (match: DeclarationMacroMatch): string => {
+    if (match.macroName === "defineAppTeardown") return generateTeardownDeclaration(match, generation);
+    if (!hasMacroOptions(match)) throw new Error(`[compdi] Missing options for ${match.macroName}`);
     switch (match.macroName) {
       case "createSingleton": case "defineSingleton": return generateSingletonDeclaration(match, generation);
       case "createTransient": case "defineTransient": return generateTransientDeclaration(match, generation);
       case "createScoped": case "defineScoped": return generateScopedDeclaration(match, generation);
-      case "defineAppTeardown": return generateTeardownDeclaration(match, generation);
     }
   };
 
   function replacementFor(match: MacroMatch): string {
-    return match.declaration && match.name ? declarationFor(match) : expressionFor(match);
+    return isDeclarationMacro(match) ? declarationFor(match) : expressionFor(match);
   }
 
   const roots = context.matches.filter((match) => !context.matches.some((parent) => parent !== match && parent.start <= match.start && parent.end >= match.end));
