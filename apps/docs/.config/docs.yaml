@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://unpkg.com/undocs/schema/config.json
+name: Compdi
+shortDescription: Zero-overhead, compile-time dependency injection for TypeScript.
+description: Type-safe dependency injection erased at build time, with no runtime container or reflect-metadata.
+url: https://franz-bendezu.github.io/compdi
+github: franz-bendezu/compdi
+branch: main
+themeColor: cyan
+automd: true
+llms:
+  domain: https://franz-bendezu.github.io/compdi
+  title: Compdi Documentation
+  description: Guides and API reference for Compdi compile-time dependency injection.
+  full:
+    title: Complete Compdi Documentation
+    description: The complete Compdi guides, concepts, integrations, and macro API reference.

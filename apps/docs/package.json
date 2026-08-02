@@ -1,0 +1,16 @@
+{
+  "name": "@compdi/docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "undocs dev",
+    "build": "undocs build",
+    "lint": "echo 'No lint rules configured for docs'",
+    "typecheck": "undocs build",
+    "test": "echo 'No tests for docs'",
+    "clean": "rm -rf .docs dist"
+  },
+  "devDependencies": {
+    "undocs": "^0.4.17"
+  }
+}

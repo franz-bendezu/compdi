@@ -107,10 +107,10 @@ import { createSingleton, vitePlugin }      from "compdi";               // ever
 | `defineSingleton({ target, deps })` | `() => T` | Getter for a shared instance |
 | `defineSingleton({ target, deps, lazy: true })` | `() => T` | Lazy getter — instance created on first call |
 | `createTransient({ target, deps })` | `() => T` | Factory — new instance on every call |
-| `defineTransient({ target, deps })` | `() => T` | Deprecated alias of `createTransient` |
+| `defineTransient({ target, deps })` | `() => T` | Factory — new instance on every call |
 | `createScoped({ target, deps, context })` | `[ScopedProxy<T>, ScopedController<T, K>]` | Stable proxy and its scope controller |
 | `defineScoped({ target, deps })` | `ScopedAccessor<T>` | Deferred per-context accessor |
-| `defineAppTeardown(resources)` | `() => Promise<void>` | Async cleanup for all resources |
+| `defineAppTeardown(resources)` | `() => Promise<void>` | Experimental async cleanup for all resources; may be removed |
 
 > If a macro call reaches runtime without the build plugin, it throws by design.
 
@@ -118,6 +118,7 @@ import { createSingleton, vitePlugin }      from "compdi";               // ever
 
 - `createSingleton` / `createScoped` — produces a value or instance directly.
 - `createTransient` — produces a factory for a fresh instance on each call.
+- `defineTransient` — produces a factory for a fresh instance on each call.
 - `define...` — produces a function, getter, or deferred accessor.
 
 ## Supported Build Tools
@@ -145,6 +146,13 @@ npm install
 npm run build
 npm run typecheck
 npm run test
+```
+
+The monorepo applications live in `apps/`:
+
+```bash
+pnpm --filter @compdi/playground dev  # interactive lifecycle demo
+pnpm --filter @compdi/docs dev        # documentation site
 ```
 
 ## Roadmap
