@@ -37,6 +37,22 @@ describe("transformCompdiMacros", () => {
         await expect(runFixture("singleton/create-async.input.ts"))
           .toMatchFileSnapshot(snapshot("singleton/create-async"));
       });
+
+      it("accepts lazy: true for createSingleton", () => {
+        const input = [
+          'import { createSingleton } from "@compdi/core";',
+          "class Service {}",
+          "const value = createSingleton({ target: Service, deps: [], lazy: true });"
+        ].join("\n");
+
+        const result = transformCompdiMacros(input, "create-singleton-lazy.input.ts");
+
+        if (!result) {
+          throw new Error("Expected createSingleton lazy transform to return code");
+        }
+
+        expect(result.code).toContain("const value = new Service();");
+      });
     });
 
     describe("defineSingleton", () => {
@@ -264,7 +280,7 @@ describe("transformCompdiMacros", () => {
       ["createSingleton", "{ target: Date, factory: () => new Date() }", "exactly one"],
       ["createSingleton", "{ target: Date, unknown: true }", "unknown option `unknown`"],
       ["defineSingleton", "{ target: Date, lazy: flag }", "boolean literal"],
-      ["createTransient", "{ target: Date, lazy: true }", "only by `defineSingleton`"],
+      ["createTransient", "{ target: Date, lazy: true }", "only by singleton macros"],
       ["defineScoped", "{ target: Date, context: () => ({}) }", "only by `createScoped`"],
       ["createScoped", "{ target: Date }", "`context` is required"],
       ["createSingleton", "{ target: Date, onRelease: () => {} }", "only by scoped macros"],

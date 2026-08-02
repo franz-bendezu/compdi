@@ -139,8 +139,8 @@ function parseOptions(id: string, code: string, macro: string, call: CallExpress
   if (hasTarget === hasFactory) {
     throw diagnostic(id, code, object, macro, "options must specify exactly one of `target` or `factory`");
   }
-  if (lazyNode && macro !== "defineSingleton") {
-    throw diagnostic(id, code, lazyNode, macro, "`lazy` is supported only by `defineSingleton`");
+  if (lazyNode && macro !== "createSingleton" && macro !== "defineSingleton") {
+    throw diagnostic(id, code, lazyNode, macro, "`lazy` is supported only by singleton macros");
   }
   if (values.has("context") && macro !== "createScoped") {
     throw diagnostic(id, code, values.get("context")!, macro, "`context` is supported only by `createScoped`");
