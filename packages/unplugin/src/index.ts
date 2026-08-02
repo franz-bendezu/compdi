@@ -1,4 +1,4 @@
-import { createUnplugin } from "unplugin";
+import { createUnplugin, type UnpluginInstance } from "unplugin";
 import { transformCompdiMacros } from "./transform/index";
 
 export type CompdiPluginOptions = {
@@ -7,24 +7,29 @@ export type CompdiPluginOptions = {
 
 const defaultInclude = /\.[cm]?[jt]sx?$/;
 
-const compdiPlugin = createUnplugin((options?: CompdiPluginOptions) => ({
-  name: "unplugin-compdi",
-  enforce: "pre",
-  transform(code, id) {
-    const include = options?.include ?? defaultInclude;
+const compdiPlugin: UnpluginInstance<
+  CompdiPluginOptions | undefined,
+  false
+> = createUnplugin<CompdiPluginOptions | undefined, false>(
+  (options) => ({
+    name: "unplugin-compdi",
+    enforce: "pre",
+    transform(code, id) {
+      const include = options?.include ?? defaultInclude;
 
-    if (!include.test(id)) {
-      return null;
+      if (!include.test(id)) {
+        return null;
+      }
+
+      const transformed = transformCompdiMacros(code, id);
+      if (!transformed) {
+        return null;
+      }
+
+      return transformed;
     }
-
-    const transformed = transformCompdiMacros(code, id);
-    if (!transformed) {
-      return null;
-    }
-
-    return transformed;
-  }
-}));
+  })
+);
 
 export const compdi = compdiPlugin;
 

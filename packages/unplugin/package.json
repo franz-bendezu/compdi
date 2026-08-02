@@ -32,7 +32,8 @@
     "./esbuild": {
       "types": "./dist/esbuild.d.mts",
       "import": "./dist/esbuild.mjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "repository": {
     "type": "git",

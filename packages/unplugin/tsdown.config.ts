@@ -10,6 +10,10 @@ export default defineConfig({
     'src/esbuild.ts',
   ],
   format: ['esm'],
+  platform: 'node',
   dts: true,
   clean: true,
+  deps: {
+    neverBundle: true,
+  },
 })
