@@ -38,6 +38,19 @@ export const useAsyncCleanup = defineScoped({
   }
 });
 
+let falseFactoryCalls = 0;
+export const useFalseResource = defineScoped({ factory: () => { falseFactoryCalls++; return false; } });
+let zeroFactoryCalls = 0;
+export const useZeroResource = defineScoped({ factory: () => { zeroFactoryCalls++; return 0; } });
+let emptyFactoryCalls = 0;
+export const useEmptyResource = defineScoped({ factory: () => { emptyFactoryCalls++; return ""; } });
+let nullFactoryCalls = 0;
+export const useNullResource = defineScoped({ factory: () => { nullFactoryCalls++; return null; } });
+let undefinedFactoryCalls = 0;
+export const useUndefinedResource = defineScoped({ factory: () => { undefinedFactoryCalls++; return undefined; } });
+let nanFactoryCalls = 0;
+export const useNanResource = defineScoped({ factory: () => { nanFactoryCalls++; return Number.NaN; } });
+
 describe("defineScoped runtime lifecycle", () => {
   it("reuses, inspects, releases, and recreates scoped values", () => {
     const firstContext = {};
@@ -81,5 +94,26 @@ describe("defineScoped runtime lifecycle", () => {
     expect(asyncReleased).toBeInstanceOf(Promise);
     await expect(asyncReleased).resolves.toBe(asyncValue);
     expect(asyncReleases).toEqual([asyncValue]);
+  });
+
+  it("caches all falsy scoped values", () => {
+    const cases = [
+      [useFalseResource, false, () => falseFactoryCalls],
+      [useZeroResource, 0, () => zeroFactoryCalls],
+      [useEmptyResource, "", () => emptyFactoryCalls],
+      [useNullResource, null, () => nullFactoryCalls],
+      [useUndefinedResource, undefined, () => undefinedFactoryCalls],
+      [useNanResource, Number.NaN, () => nanFactoryCalls]
+    ] as const;
+
+    for (const [accessor, value, calls] of cases) {
+      const context = {};
+      expect(accessor(context)).toBe(value);
+      expect(accessor(context)).toBe(value);
+      expect(calls()).toBe(1);
+      expect(accessor.has(context)).toBe(true);
+      expect(accessor.release(context)).toBe(value);
+      expect(accessor.has(context)).toBe(false);
+    }
   });
 });

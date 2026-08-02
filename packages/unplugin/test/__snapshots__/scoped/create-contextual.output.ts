@@ -17,8 +17,7 @@ const __createScoped_database = (__context: ReturnType<typeof __getContext_datab
 const __registry_database = new Map<ReturnType<typeof __getContext_database>, ReturnType<typeof __createScoped_database>>();
 const __resolveScoped_database = () => {
   const __context = __getContext_database();
-  const __existing = __registry_database.get(__context);
-  if (__existing !== undefined) return __existing;
+  if (__registry_database.has(__context)) return __registry_database.get(__context)!;
   const __instance = __createScoped_database(__context);
   __registry_database.set(__context, __instance);
   return __instance;
@@ -47,14 +46,21 @@ const __proxy_database = new Proxy({} as ReturnType<typeof __createScoped_databa
     const __instance = __resolveScoped_database();
     return Reflect.set(__instance, __property, __value, __instance);
   },
+  deleteProperty(_target, __property) {
+    return Reflect.deleteProperty(__resolveScoped_database(), __property);
+  },
   has(_target, __property) {
     return Reflect.has(__resolveScoped_database(), __property);
+  },
+  getPrototypeOf() {
+    return Reflect.getPrototypeOf(__resolveScoped_database());
   },
   ownKeys() {
     return Reflect.ownKeys(__resolveScoped_database());
   },
   getOwnPropertyDescriptor(_target, __property) {
-    return Reflect.getOwnPropertyDescriptor(__resolveScoped_database(), __property);
+    const __descriptor = Reflect.getOwnPropertyDescriptor(__resolveScoped_database(), __property);
+    return __descriptor ? { ...__descriptor, configurable: true } : undefined;
   },
 }) as ReturnType<typeof __createScoped_database>;
 export const [database, databaseScope] = [__proxy_database, __controller_database] as const;

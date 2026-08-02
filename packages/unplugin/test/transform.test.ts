@@ -181,7 +181,7 @@ describe("transformCompdiMacros", () => {
         'import { createSingleton as singleton, macroNotTransformed } from "@compdi/core";',
         "class Service {}",
         "const target = Service;",
-        "export const service: Service = singleton({ \"ignored\": 1, \"deps\": [], target });",
+        "export const service: Service = singleton({ \"deps\": [], target });",
         "export { macroNotTransformed };"
       ].join("\n");
       const result = transformCompdiMacros(input, "alias.input.ts");
@@ -248,6 +248,36 @@ describe("transformCompdiMacros", () => {
 
     it("returns null for syntax-invalid input", () => {
       expect(transformCompdiMacros('import { createSingleton } from "@compdi/core"; const = ;', "invalid.input.ts")).toBeNull();
+    });
+  });
+
+  describe("strict diagnostics", () => {
+    const transformInvalid = (macro: string, options: string): void => {
+      transformCompdiMacros(
+        `import { ${macro} } from "@compdi/core";\nconst value = ${macro}(${options});`,
+        "diagnostic.input.ts"
+      );
+    };
+
+    it.each([
+      ["createSingleton", "{ target: Date, factory: () => new Date() }", "exactly one"],
+      ["createSingleton", "{ target: Date, unknown: true }", "unknown option `unknown`"],
+      ["defineSingleton", "{ target: Date, lazy: flag }", "boolean literal"],
+      ["createTransient", "{ target: Date, lazy: true }", "only by `defineSingleton`"],
+      ["defineScoped", "{ target: Date, context: () => ({}) }", "only by `createScoped`"],
+      ["createScoped", "{ target: Date }", "`context` is required"],
+      ["createSingleton", "{ target: Date, onRelease: () => {} }", "only by scoped macros"],
+      ["createSingleton", "{ target: Date, deps: [,] }", "array holes"]
+    ])("rejects invalid %s options", (macro, options, message) => {
+      expect(() => transformInvalid(macro, options)).toThrowError(
+        expect.objectContaining({ message: expect.stringContaining(message) })
+      );
+    });
+
+    it("includes macro and source location in diagnostics", () => {
+      expect(() => transformInvalid("createScoped", "{ target: Date }")).toThrow(
+        /\[compdi\] createScoped at diagnostic\.input\.ts:2:\d+:/
+      );
     });
   });
 });

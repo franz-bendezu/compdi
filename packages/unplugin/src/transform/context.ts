@@ -112,22 +112,44 @@ function parseOptions(id: string, code: string, macro: string, call: CallExpress
     }
     const key = staticKey(property);
     if (!key) throw diagnostic(id, code, property, macro, "computed option keys are not supported");
-    if (["target", "factory", "deps", "lazy", "context", "onRelease"].includes(key)) {
-      values.set(key, property.value);
+    if (!["target", "factory", "deps", "lazy", "context", "onRelease"].includes(key)) {
+      throw diagnostic(id, code, property, macro, `unknown option \`${key}\``);
     }
+    if (values.has(key)) throw diagnostic(id, code, property, macro, `duplicate option \`${key}\``);
+    values.set(key, property.value);
   }
   const deps = values.get("deps");
   if (deps && deps.type !== "ArrayExpression") {
     throw diagnostic(id, code, deps, macro, "`deps` must be an array literal");
+  }
+  if (deps?.elements.some((node) => node === null)) {
+    throw diagnostic(id, code, deps, macro, "dependency array holes are not supported");
   }
   const depElements = deps ? deps.elements.filter((node) => node !== null) : [];
   const spread = depElements.find((node) => node.type === "SpreadElement");
   if (spread) throw diagnostic(id, code, spread, macro, "dependency spreads are not supported");
   const depNodes = depElements.filter((node): node is Expression => node.type !== "SpreadElement");
   const lazyNode = values.get("lazy");
+  if (lazyNode && (lazyNode.type !== "Literal" || typeof lazyNode.value !== "boolean")) {
+    throw diagnostic(id, code, lazyNode, macro, "`lazy` must be a boolean literal");
+  }
   const lazy = lazyNode?.type === "Literal" && lazyNode.value === true;
-  if (!values.has("target") && !values.has("factory")) {
-    throw diagnostic(id, code, object, macro, "options must specify `target` or `factory`");
+  const hasTarget = values.has("target");
+  const hasFactory = values.has("factory");
+  if (hasTarget === hasFactory) {
+    throw diagnostic(id, code, object, macro, "options must specify exactly one of `target` or `factory`");
+  }
+  if (lazyNode && macro !== "defineSingleton") {
+    throw diagnostic(id, code, lazyNode, macro, "`lazy` is supported only by `defineSingleton`");
+  }
+  if (values.has("context") && macro !== "createScoped") {
+    throw diagnostic(id, code, values.get("context")!, macro, "`context` is supported only by `createScoped`");
+  }
+  if (macro === "createScoped" && !values.has("context")) {
+    throw diagnostic(id, code, object, macro, "`context` is required by `createScoped`");
+  }
+  if (values.has("onRelease") && macro !== "createScoped" && macro !== "defineScoped") {
+    throw diagnostic(id, code, values.get("onRelease")!, macro, "`onRelease` is supported only by scoped macros");
   }
   return {
     target: values.get("target"), factory: values.get("factory"), deps: depNodes,

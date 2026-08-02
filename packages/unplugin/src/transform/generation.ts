@@ -3,6 +3,7 @@ import type { MacroMatch, ParsedDiOptions, TransformContext } from "./context";
 
 export interface MacroGenerationContext {
   module: TransformContext;
+  uninitialized: string;
   renderNode(node: Span): string;
   instantiate(options: ParsedDiOptions): string;
   instantiateContextual(options: ParsedDiOptions, contextExpression: string): string;

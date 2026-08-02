@@ -10,7 +10,13 @@ export function generateSingletonExpression(match: SingletonMatch, generation: M
 
   const suffix = generation.nextUnique();
   const value = `__compdi_value_${suffix}`;
-  if (options.lazy) return `(() => { let ${value} = null; return () => { if (!${value}) ${value} = ${expression}; return ${value}; }; })()`;
+  if (options.lazy) {
+    const annotation = generation.typeAnnotation(options);
+    const typed = annotation
+      ? `let ${value}: ${annotation} | typeof ${generation.uninitialized} = ${generation.uninitialized};`
+      : `let ${value}: any = ${generation.uninitialized};`;
+    return `(() => { ${typed} return () => { if (${value} === ${generation.uninitialized}) ${value} = ${expression}; return ${value}; }; })()`;
+  }
   if (match.hasAwait) return `await (async () => { const ${value} = await ${expression}; return () => ${value}; })()`;
   return `(() => { const ${value} = ${expression}; return () => ${value}; })()`;
 }
@@ -28,8 +34,10 @@ export function generateSingletonDeclaration(match: SingletonMatch & Declaration
   if (!binding) throw new Error(`[compdi] Missing binding metadata for ${name}`);
   if (options.lazy) {
     const annotation = generation.typeAnnotation(options);
-    const typed = annotation ? `let ${binding.instanceName}: ${annotation} | null = null;` : `let ${binding.instanceName} = null;`;
-    return [typed, `const ${binding.peekName} = () => ${binding.instanceName};`, `${visibility}const ${name} = () => {`, `  if (!${binding.instanceName}) ${binding.instanceName} = ${expression};`, `  return ${binding.instanceName};`, `};`].join("\n");
+    const typed = annotation
+      ? `let ${binding.instanceName}: ${annotation} | typeof ${generation.uninitialized} = ${generation.uninitialized};`
+      : `let ${binding.instanceName}: any = ${generation.uninitialized};`;
+    return [typed, `const ${binding.peekName} = () => ${binding.instanceName} === ${generation.uninitialized} ? undefined : ${binding.instanceName};`, `${visibility}const ${name} = () => {`, `  if (${binding.instanceName} === ${generation.uninitialized}) ${binding.instanceName} = ${expression};`, `  return ${binding.instanceName};`, `};`].join("\n");
   }
   const rhs = match.hasAwait ? `await ${expression}` : expression;
   const annotation = generation.typeAnnotation(options, match.hasAwait);

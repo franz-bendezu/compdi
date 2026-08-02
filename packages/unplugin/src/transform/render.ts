@@ -12,6 +12,8 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
   if (!context.matches.length) return false;
   let unique = 0;
   const sourceIdentifiers = new Set(context.code.match(/[A-Za-z_$][\w$]*/g) ?? []);
+  let uninitialized = "__compdi_uninitialized";
+  while (sourceIdentifiers.has(uninitialized)) uninitialized += "_";
   const nextUnique = (): number => {
     while ([
       `__compdi_value_${unique}`, `compdi_${unique}`, `scope_${unique}`,
@@ -71,6 +73,7 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
   };
   const generation: MacroGenerationContext = {
     module: context,
+    uninitialized,
     renderNode,
     instantiate,
     instantiateContextual,
@@ -78,6 +81,10 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
     typeAnnotation,
     nextUnique
   };
+
+  if (context.matches.some((match) => match.macroName === "defineSingleton" && match.options?.lazy)) {
+    ms.prepend(`const ${uninitialized}: unique symbol = Symbol();\n`);
+  }
 
   const expressionFor = (match: MacroMatch): string => {
     if (match.macroName === "defineAppTeardown") return generateTeardownExpression(match, generation);

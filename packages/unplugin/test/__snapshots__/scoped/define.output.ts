@@ -34,8 +34,7 @@ interface SessionCtx { sessionId: string; }
 
 const __registry_getRequestContext = new Map<RequestCtx, IRequestContext>();
 const __getScoped_getRequestContext = (__ctx: RequestCtx) => {
-  const __existing = __registry_getRequestContext.get(__ctx);
-  if (__existing) return __existing;
+  if (__registry_getRequestContext.has(__ctx)) return __registry_getRequestContext.get(__ctx)!;
   const __val = new RequestContext(config, logger, "trace-001");
   __registry_getRequestContext.set(__ctx, __val);
   return __val;
@@ -50,8 +49,7 @@ __getScoped_getRequestContext.release = (__ctx: RequestCtx) => {
 export const getRequestContext = __getScoped_getRequestContext;
 const __registry_getSession = new Map<SessionCtx, ISessionStore>();
 const __getScoped_getSession = (__ctx: SessionCtx) => {
-  const __existing = __registry_getSession.get(__ctx);
-  if (__existing) return __existing;
+  if (__registry_getSession.has(__ctx)) return __registry_getSession.get(__ctx)!;
   const __val = new SessionStore(config);
   __registry_getSession.set(__ctx, __val);
   return __val;

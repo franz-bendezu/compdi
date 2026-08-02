@@ -19,6 +19,18 @@ class Resource {
   }
 }
 
+const secretKey = Symbol("secret");
+
+class FrozenResource {
+  #secret = 41;
+  readonly visible = 1;
+  readonly [secretKey] = "symbol-value";
+
+  reveal(): number {
+    return ++this.#secret;
+  }
+}
+
 let activeContext: RequestContext = { id: 1 };
 let contextCalls = 0;
 let factoryCalls = 0;
@@ -41,6 +53,16 @@ export const [resource, resourceScope] = createScoped({
 
 export const [resourceWithoutCleanup, resourceWithoutCleanupScope] = createScoped({
   factory: () => new Resource(0),
+  context: () => activeContext
+});
+
+export const [frozenResource] = createScoped({
+  factory: () => Object.freeze(new FrozenResource()),
+  context: () => activeContext
+});
+
+export const [mutableResource] = createScoped({
+  factory: () => ({ removable: true, retained: true }),
   context: () => activeContext
 });
 
@@ -108,5 +130,23 @@ describe("contextual createScoped runtime behavior", () => {
     expect(resourceWithoutCleanup.value).toBe(1);
     const releasedWithoutCleanup = resourceWithoutCleanupScope.release(context);
     expect(releasedWithoutCleanup).toBeInstanceOf(Resource);
+  });
+
+  it("preserves proxy invariants for frozen instances and symbol properties", () => {
+    expect(frozenResource).toBeInstanceOf(FrozenResource);
+    expect(frozenResource.reveal()).toBe(42);
+    expect(frozenResource[secretKey]).toBe("symbol-value");
+    expect(Reflect.ownKeys(frozenResource)).toContain(secretKey);
+
+    const descriptor = Object.getOwnPropertyDescriptor(frozenResource, "visible");
+    expect(descriptor).toMatchObject({ value: 1, enumerable: true, configurable: true });
+    expect(Object.keys(frozenResource)).toContain("visible");
+  });
+
+  it("forwards property deletion to the active instance", () => {
+    expect("removable" in mutableResource).toBe(true);
+    expect(Reflect.deleteProperty(mutableResource, "removable")).toBe(true);
+    expect("removable" in mutableResource).toBe(false);
+    expect(mutableResource.retained).toBe(true);
   });
 });
