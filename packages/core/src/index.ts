@@ -1,3 +1,36 @@
+type AnyCtor<T = any> = new (...args: any[]) => T;
+type AnyFactory<T = any> = (...args: any[]) => T;
+
+type SingletonTargetOptions<C extends AnyCtor> = {
+  target: C;
+  deps?: NoInfer<ConstructorParameters<C>>;
+  lazy?: boolean;
+};
+
+type SingletonFactoryOptions<F extends AnyFactory> = {
+  factory: F;
+  deps?: NoInfer<Parameters<F>>;
+  lazy?: boolean;
+};
+
+type SingletonExplicitTargetOptions<T> = {
+  target: new (...args: any[]) => T;
+  deps?: readonly any[];
+  lazy?: boolean;
+};
+
+type SingletonExplicitFactoryOptions<T> = {
+  factory: (...args: any[]) => T;
+  deps?: readonly any[];
+  lazy?: boolean;
+};
+
+type AsyncSingletonFactoryOptions<T> = {
+  factory: (...args: any[]) => Promise<T>;
+  deps?: readonly any[];
+  lazy?: boolean;
+};
+
 export interface DiOptions<T, TDeps extends readonly unknown[]> {
   /** The class constructor to instantiate. Generates `new target(...deps)` */
   target?: new (...args: TDeps) => T;
@@ -7,7 +40,9 @@ export interface DiOptions<T, TDeps extends readonly unknown[]> {
 
   /** Array of dependencies to inject. */
   deps?: TDeps;
+}
 
+export interface SingletonOptions<T, TDeps extends readonly unknown[]> extends DiOptions<T, TDeps> {
   /** Initialization strategy. Defaults to false (eager). Valid for Singletons. */
   lazy?: boolean;
 }
@@ -23,11 +58,11 @@ export type ScopedReleaseResult<T, TOnRelease> = TOnRelease extends (
   ...args: never[]
 ) => infer TResult
   ? TResult extends PromiseLike<unknown>
-    ? Promise<T | undefined>
-    : T | undefined
+  ? Promise<T | undefined>
+  : T | undefined
   : TOnRelease extends PromiseLike<unknown>
-    ? Promise<T | undefined>
-    : T | undefined;
+  ? Promise<T | undefined>
+  : T | undefined;
 
 /** Shared non-creating lifecycle operations for scoped values. */
 export interface ScopedLifecycle<T, K = unknown, TRelease = T | undefined> {
@@ -66,7 +101,7 @@ export interface ScopedAccessor<T, K = unknown, TRelease = T | undefined>
 
 /** Non-creating lifecycle operations returned alongside a scoped proxy. */
 export interface ScopedController<T, K, TRelease = T | undefined>
-  extends ScopedLifecycle<T, K, TRelease> {}
+  extends ScopedLifecycle<T, K, TRelease> { }
 
 /** A stable object that forwards operations to the value for the active context. */
 export type ScopedProxy<T extends object> = T;
@@ -127,24 +162,24 @@ function macroNotTransformed(name: string): never {
  * const database = createSingleton({ target: Database, deps: [config] });
  * ```
  */
-export function createSingleton<C extends new (...args: any[]) => any>(
-  options: { target: C; deps?: NoInfer<ConstructorParameters<C>>; lazy?: boolean }
+export function createSingleton<C extends AnyCtor>(
+  options: SingletonTargetOptions<C>
 ): InstanceType<C>;
 export function createSingleton<F extends (...args: any[]) => Promise<any>>(
-  options: { factory: F; deps?: NoInfer<Parameters<F>>; lazy?: boolean }
+  options: SingletonFactoryOptions<F>
 ): ReturnType<F>;
-export function createSingleton<F extends (...args: any[]) => any>(
-  options: { factory: F; deps?: NoInfer<Parameters<F>>; lazy?: boolean }
+export function createSingleton<F extends AnyFactory>(
+  options: SingletonFactoryOptions<F>
 ): ReturnType<F>;
 // Overload 4+: explicit T for interface narrowing (deps loosely typed)
 export function createSingleton<T>(
-  options: { target: new (...args: any[]) => T; deps?: readonly any[]; lazy?: boolean }
+  options: SingletonExplicitTargetOptions<T>
 ): T;
 export function createSingleton<T>(
-  options: { factory: (...args: any[]) => Promise<T>; deps?: readonly any[]; lazy?: boolean }
+  options: AsyncSingletonFactoryOptions<T>
 ): Promise<T>;
 export function createSingleton<T>(
-  options: { factory: (...args: any[]) => T; deps?: readonly any[]; lazy?: boolean }
+  options: SingletonExplicitFactoryOptions<T>
 ): T;
 /**
  * Creates one eagerly initialized application-wide value from a class target or
@@ -156,7 +191,7 @@ export function createSingleton<T>(
  * const database = createSingleton({ target: Database, deps: [config] });
  * ```
  */
-export function createSingleton<T>(options: DiOptions<T, any>): T | Promise<T> {
+export function createSingleton<T>(options: SingletonOptions<T, any>): T | Promise<T> {
   void options;
   return macroNotTransformed("createSingleton");
 }
@@ -176,20 +211,20 @@ export function createSingleton<T>(options: DiOptions<T, any>): T | Promise<T> {
  * const database = useDatabase();
  * ```
  */
-export function defineSingleton<C extends new (...args: any[]) => any>(
-  options: { target: C; deps?: NoInfer<ConstructorParameters<C>>; lazy?: boolean }
+export function defineSingleton<C extends AnyCtor>(
+  options: SingletonTargetOptions<C>
 ): () => InstanceType<C>;
-export function defineSingleton<F extends (...args: any[]) => any>(
-  options: { factory: F; deps?: NoInfer<Parameters<F>>; lazy?: boolean }
+export function defineSingleton<F extends AnyFactory>(
+  options: SingletonFactoryOptions<F>
 ): () => ReturnType<F>;
 export function defineSingleton<T>(
-  options: { target: new (...args: any[]) => T; deps?: readonly any[]; lazy?: boolean }
+  options: SingletonExplicitTargetOptions<T>
 ): () => T;
 export function defineSingleton<T>(
-  options: { factory: (...args: any[]) => Promise<T>; deps?: readonly any[]; lazy?: boolean }
+  options: AsyncSingletonFactoryOptions<T>
 ): Promise<() => T>;
 export function defineSingleton<T>(
-  options: { factory: (...args: any[]) => T; deps?: readonly any[]; lazy?: boolean }
+  options: SingletonExplicitFactoryOptions<T>
 ): () => T;
 /**
  * Defines an accessor for one application-wide value. Pass `lazy: true` to
@@ -202,7 +237,7 @@ export function defineSingleton<T>(
  * const database = useDatabase();
  * ```
  */
-export function defineSingleton<T>(options: DiOptions<T, any>): (() => T) | Promise<() => T> {
+export function defineSingleton<T>(options: SingletonOptions<T, any>): (() => T) | Promise<() => T> {
   void options;
   return macroNotTransformed("defineSingleton");
 }
