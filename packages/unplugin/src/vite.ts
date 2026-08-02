@@ -1,3 +1,4 @@
-import { vite } from "./index";
+import { createVitePlugin } from "unplugin";
+import { compdiFactory } from "./core";
 
-export default vite;
+export default /* #__PURE__ */ createVitePlugin(compdiFactory);

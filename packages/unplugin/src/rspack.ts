@@ -1,3 +1,4 @@
-import { rspack } from "./index";
+import { createRspackPlugin } from "unplugin";
+import { compdiFactory } from "./core";
 
-export default rspack;
+export default /* #__PURE__ */ createRspackPlugin(compdiFactory);

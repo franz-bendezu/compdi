@@ -1,3 +1,4 @@
-import { rollup } from "./index";
+import { createRollupPlugin } from "unplugin";
+import { compdiFactory } from "./core";
 
-export default rollup;
+export default /* #__PURE__ */ createRollupPlugin(compdiFactory);

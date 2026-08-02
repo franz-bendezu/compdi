@@ -1,37 +1,13 @@
 import { createUnplugin, type UnpluginInstance } from "unplugin";
-import { transformCompdiMacros } from "./transform/index";
-
-export type CompdiPluginOptions = {
-  include?: RegExp;
-};
-
-const defaultInclude = /\.[cm]?[jt]sx?$/;
+import { compdiFactory, type CompdiPluginOptions } from "./core";
 
 const compdiPlugin: UnpluginInstance<
   CompdiPluginOptions | undefined,
   false
-> = createUnplugin<CompdiPluginOptions | undefined, false>(
-  (options) => ({
-    name: "unplugin-compdi",
-    enforce: "pre",
-    transform(code, id) {
-      const include = options?.include ?? defaultInclude;
-
-      if (!include.test(id)) {
-        return null;
-      }
-
-      const transformed = transformCompdiMacros(code, id);
-      if (!transformed) {
-        return null;
-      }
-
-      return transformed;
-    }
-  })
-);
+> = /* #__PURE__ */ createUnplugin(compdiFactory);
 
 export const compdi = compdiPlugin;
+export type { CompdiPluginOptions } from "./core";
 
 export default compdi;
 export const vite = compdi.vite;

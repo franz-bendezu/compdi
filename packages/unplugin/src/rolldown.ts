@@ -1,3 +1,4 @@
-import { rolldown } from "./index";
+import { createRolldownPlugin } from "unplugin";
+import { compdiFactory } from "./core";
 
-export default rolldown;
+export default /* #__PURE__ */ createRolldownPlugin(compdiFactory);
