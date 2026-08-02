@@ -12,7 +12,10 @@ export function generateSingletonExpression(match: SingletonMatch, generation: M
   const value = `__compdi_value_${suffix}`;
   if (options.lazy) {
     const annotation = generation.typeAnnotation(options);
-    const typed = annotation
+    const isTypeScript = /\.[cm]?tsx?$/.test(generation.module.id);
+    const typed = !isTypeScript
+      ? `let ${value} = ${generation.uninitialized};`
+      : annotation
       ? `let ${value}: ${annotation} | typeof ${generation.uninitialized} = ${generation.uninitialized};`
       : `let ${value}: any = ${generation.uninitialized};`;
     return `(() => { ${typed} return () => { if (${value} === ${generation.uninitialized}) ${value} = ${expression}; return ${value}; }; })()`;
@@ -34,7 +37,10 @@ export function generateSingletonDeclaration(match: SingletonMatch & Declaration
   if (!binding) throw new Error(`[compdi] Missing binding metadata for ${name}`);
   if (options.lazy) {
     const annotation = generation.typeAnnotation(options);
-    const typed = annotation
+    const isTypeScript = /\.[cm]?tsx?$/.test(generation.module.id);
+    const typed = !isTypeScript
+      ? `let ${binding.instanceName} = ${generation.uninitialized};`
+      : annotation
       ? `let ${binding.instanceName}: ${annotation} | typeof ${generation.uninitialized} = ${generation.uninitialized};`
       : `let ${binding.instanceName}: any = ${generation.uninitialized};`;
     return [typed, `const ${binding.peekName} = () => ${binding.instanceName} === ${generation.uninitialized} ? undefined : ${binding.instanceName};`, `${visibility}const ${name} = () => {`, `  if (${binding.instanceName} === ${generation.uninitialized}) ${binding.instanceName} = ${expression};`, `  return ${binding.instanceName};`, `};`].join("\n");

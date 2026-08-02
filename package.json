@@ -6,6 +6,9 @@
   "license": "MIT",
   "packageManager": "pnpm@11.1.1",
   "scripts": {
+    "changeset": "changeset",
+    "version:packages": "changeset version",
+    "release:packages": "changeset publish",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
@@ -21,6 +24,7 @@
     "publish:local": "turbo run release"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "turbo": "^2.10.8",
     "typescript": "^6.0.3"
   }

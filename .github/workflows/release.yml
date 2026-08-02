@@ -1,159 +1,59 @@
 name: Release & Publish
 
 on:
-  workflow_dispatch:
-    inputs:
-      version-bump:
-        description: 'Version bump type (patch, minor, major)'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-      dry-run:
-        description: 'Perform a dry run without publishing'
-        required: false
-        default: false
-        type: boolean
+  push:
+    branches: [main]
 
 permissions:
   contents: write
+  pull-requests: write
   id-token: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-main
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        node-version: [24.x]
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
-          registry-url: 'https://registry.npmjs.org'
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
           cache: pnpm
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Bump release version
-        id: version
+      - name: Validate release
         run: |
-          npm version "${{ inputs.version-bump }}" --no-git-tag-version
-          VERSION=$(node -p "require('./package.json').version")
-          for dir in packages/core packages/compdi packages/unplugin apps/playground; do
-            npm --prefix "$dir" version "$VERSION" --no-git-tag-version
-          done
-          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
-      
-      - name: Run build
-        run: pnpm run build
-      
-      - name: Run typecheck
-        run: pnpm run typecheck
-      
-      - name: Configure Git
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-      
-      - name: Validate package integrity
-        run: pnpm run publish:verify
+          pnpm build
+          pnpm typecheck
+          pnpm test
+          pnpm publish:verify
 
-      - name: Commit release version
-        if: ${{ inputs.dry-run == false }}
-        run: |
-          VERSION="${{ steps.version.outputs.value }}"
-          git add package.json pnpm-lock.yaml packages/*/package.json apps/playground/package.json
-          git commit -m "chore: release v${VERSION}"
+      # npm trusted publishing uses the workflow's OIDC identity. setup-node's
+      # temporary token entry would otherwise override it with an empty value.
+      - name: Prepare npm trusted publishing
+        run: rm -f "$NPM_CONFIG_USERCONFIG"
 
-      - name: Publish to npm (Dry Run)
-        if: ${{ inputs.dry-run == true }}
-        run: |
-          echo "📋 Dry Run Mode: Simulating publish..."
-          echo "Release version: ${{ steps.version.outputs.value }}"
-          echo "Would publish the following packages:"
-          echo "  - @compdi/core@${{ steps.version.outputs.value }} (public)"
-          echo "  - compdi@${{ steps.version.outputs.value }} (public)"
-          echo "  - unplugin-compdi@${{ steps.version.outputs.value }} (public)"
-      
-      - name: Publish to npm
-        if: ${{ inputs.dry-run == false }}
-        run: |
-          # setup-node's temp .npmrc sets _authToken=${NODE_AUTH_TOKEN} which expands to empty
-          # and overrides the OIDC-obtained token on the PUT request. Remove it first.
-          rm -f "$NPM_CONFIG_USERCONFIG"
-          pnpm publish --filter @compdi/core --access public --provenance
-          pnpm publish --filter compdi --access public --provenance
-          pnpm publish --filter unplugin-compdi --access public --provenance
-          echo "✓ Packages published successfully"
-
-      - name: Push release commit
-        if: ${{ inputs.dry-run == false }}
-        run: git push origin HEAD:${{ github.ref_name }}
-      
-      - name: Create Git tag
-        if: ${{ inputs.dry-run == false }}
-        run: |
-          VERSION="${{ steps.version.outputs.value }}"
-          git tag -a "v${VERSION}" -m "Release v${VERSION}"
-          git push origin "v${VERSION}"
-      
-      - name: Create GitHub Release
-        if: ${{ inputs.dry-run == false }}
-        uses: softprops/action-gh-release@v3
+      - name: Create release pull request or publish
+        uses: changesets/action@v1
+        with:
+          publish: pnpm release:packages
+          version: pnpm version:packages
+          commit: "chore: release packages"
+          title: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.version.outputs.value }}
-          name: Release v${{ steps.version.outputs.value }}
-          body: |
-            ## Published Packages
-
-            ### Public
-            - @compdi/core@${{ steps.version.outputs.value }} - Type-safe DI macros
-            - compdi@${{ steps.version.outputs.value }} - Unified public API
-            - unplugin-compdi@${{ steps.version.outputs.value }} - Build plugin
-
-            ## Links
-            - npm: https://www.npmjs.com/package/compdi
-            - scoped: https://www.npmjs.com/package/@compdi/core
-            - plugin: https://www.npmjs.com/package/unplugin-compdi
-          draft: false
-          prerelease: false
-
-  verify:
-    needs: release
-    if: ${{ inputs.dry-run == false }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Verify npm publication
-        run: |
-          VERSION=$(npm view compdi version)
-          echo "✓ compdi@${VERSION} verified on npm"
-          
-          CORE_VERSION=$(npm view @compdi/core version)
-          echo "✓ @compdi/core@${CORE_VERSION} verified on npm"
-
-          UNPLUGIN_VERSION=$(npm view unplugin-compdi version)
-          echo "✓ unplugin-compdi@${UNPLUGIN_VERSION} verified on npm"

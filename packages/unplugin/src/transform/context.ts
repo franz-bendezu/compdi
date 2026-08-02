@@ -224,7 +224,11 @@ function createBindingInfo(name: string, kind: BindingKind): BindingInfo {
 
 export function analyzeModule(code: string, id: string): TransformContext | null {
   const parsed = parseSync(id, code, { showSemanticErrors: false, astType: "ts" });
-  if (parsed.errors.length) return null;
+  if (parsed.errors.length) {
+    const first = parsed.errors[0];
+    const detail = first?.codeframe ? `\n${first.codeframe}` : "";
+    throw new Error(`[compdi] Failed to parse ${id}: ${first?.message ?? "unknown syntax error"}${detail}`);
+  }
   const program = parsed.program;
   const localMacros = new Map<string, MacroName>();
   const imports: MacroImport[] = [];

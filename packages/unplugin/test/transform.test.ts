@@ -246,8 +246,9 @@ describe("transformCompdiMacros", () => {
         .toThrow(/\[compdi\] createSingleton at invalid-options\.input\.ts:\d+:\d+: object spreads are not supported/);
     });
 
-    it("returns null for syntax-invalid input", () => {
-      expect(transformCompdiMacros('import { createSingleton } from "@compdi/core"; const = ;', "invalid.input.ts")).toBeNull();
+    it("surfaces syntax-invalid input as a build diagnostic", () => {
+      expect(() => transformCompdiMacros('import { createSingleton } from "@compdi/core"; const = ;', "invalid.input.ts"))
+        .toThrow(/\[compdi\] Failed to parse invalid\.input\.ts: Unexpected token/);
     });
   });
 

@@ -83,7 +83,8 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
   };
 
   if (context.matches.some((match) => match.macroName === "defineSingleton" && match.options?.lazy)) {
-    ms.prepend(`const ${uninitialized}: unique symbol = Symbol();\n`);
+    const symbolType = /\.[cm]?tsx?$/.test(context.id) ? ": unique symbol" : "";
+    ms.prepend(`const ${uninitialized}${symbolType} = Symbol();\n`);
   }
 
   const expressionFor = (match: MacroMatch): string => {
