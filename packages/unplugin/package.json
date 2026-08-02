@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "magic-string": "^0.30.11",
-    "oxc-parser": "^0.137.0",
+    "oxc-parser": "^0.142.0",
     "unplugin": "^3.2.0"
   },
   "devDependencies": {
