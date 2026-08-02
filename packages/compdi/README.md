@@ -66,15 +66,16 @@ const useAnalytics = defineSingleton({ target: Analytics, deps: [db], lazy: true
 - `createSingleton({ target, deps })` / `createSingleton({ factory, deps })`
 - `defineSingleton({ target, deps })` / `defineSingleton({ ..., lazy: true })` for lazy
 - `createTransient({ target, deps })`
-- `defineTransient({ target, deps })` (deprecated alias of `createTransient`)
+- `defineTransient({ target, deps })`
 - `createScoped({ target, deps, context })`
 - `defineScoped({ target, deps })`
-- `defineAppTeardown(resources)`
+- `defineAppTeardown(resources)` (experimental; may be removed in a future release)
 
 Naming rule:
 
 - `createSingleton` and `createScoped` macros produce values or instances.
 - `createTransient` produces a factory that creates a fresh instance on each call.
+- `defineTransient` produces a factory that creates a fresh instance on each call.
 - `define...` macros produce functions or providers.
 - Macros are compile-time only and must be erased by the build transform.
 

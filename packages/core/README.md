@@ -15,15 +15,16 @@ This package exports the macro signatures consumed by the Compdi build transform
 - `createSingleton({ target, deps, lazy? })` / `createSingleton({ factory, deps, lazy? })`
 - `defineSingleton({ target, deps, lazy? })` / `defineSingleton({ factory, deps, lazy? })`
 - `createTransient({ target, deps })` / `createTransient({ factory, deps })`
-- `defineTransient({ target, deps })` / `defineTransient({ factory, deps })` (deprecated alias of `createTransient`)
+- `defineTransient({ target, deps })` / `defineTransient({ factory, deps })`
 - `createScoped({ target, deps, context })` / `createScoped({ factory, deps, context })`
 - `defineScoped({ target, deps })` / `defineScoped({ factory, deps })`
-- `defineAppTeardown(resources)`
+- `defineAppTeardown(resources)` (experimental; may be removed in a future release)
 
 Naming rule:
 
 - `createSingleton` and `createScoped` produce values directly.
 - `createTransient` produces a factory that creates a new instance on each call.
+- `defineTransient` produces a factory that creates a new instance on each call.
 - `define...` macros produce functions, getters, or accessors.
 - Pass `lazy: true` to `createSingleton` / `defineSingleton` for lazy initialization.
 - Pass an async `factory` for async singleton resolution.
@@ -66,8 +67,8 @@ const conn = createSingleton({ factory: async (db: Database) => db, deps: [db] }
 const createSvc = createTransient({ target: Service, deps: [db] });
 const svc = createSvc();
 
-// Deprecated alias with the same transient behavior
 const makeSvc = defineTransient({ target: Service, deps: [db] });
+const anotherSvc = makeSvc();
 
 // Scoped — per-context instance
 const [scopedSvc, scopedSvcScope] = createScoped({

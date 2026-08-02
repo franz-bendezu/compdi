@@ -3,7 +3,7 @@ import "./styles.css";
 import {
   defineAppTeardown,
   createSingleton,
-  defineTransient
+  createTransient
 } from "compdi/macros";
 
 class Database {
@@ -83,7 +83,7 @@ class AsyncConnection {
 
 export const db = createSingleton({ target: Database });
 export const logger = createSingleton({ target: Logger });
-export const createService = defineTransient({ target: Service, deps: [db, logger] });
+export const createService = createTransient({ target: Service, deps: [db, logger] });
 export const analytics = createSingleton({ target: Analytics, deps: [db], lazy: true });
 
 export const connection = await createSingleton({ factory: async () => new AsyncConnection() });

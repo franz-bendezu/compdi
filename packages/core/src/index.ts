@@ -146,6 +146,16 @@ export function createSingleton<T>(
 export function createSingleton<T>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[]; lazy?: boolean }
 ): T;
+/**
+ * Creates one eagerly initialized application-wide value from a class target or
+ * factory. Async factories return a promise.
+ *
+ * @group Singleton
+ * @example
+ * ```ts
+ * const database = createSingleton({ target: Database, deps: [config] });
+ * ```
+ */
 export function createSingleton<T>(options: DiOptions<T, any>): T | Promise<T> {
   void options;
   return macroNotTransformed("createSingleton");
@@ -181,6 +191,17 @@ export function defineSingleton<T>(
 export function defineSingleton<T>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[]; lazy?: boolean }
 ): () => T;
+/**
+ * Defines an accessor for one application-wide value. Pass `lazy: true` to
+ * defer construction until the first accessor call.
+ *
+ * @group Singleton
+ * @example
+ * ```ts
+ * const useDatabase = defineSingleton({ target: Database, lazy: true });
+ * const database = useDatabase();
+ * ```
+ */
 export function defineSingleton<T>(options: DiOptions<T, any>): (() => T) | Promise<() => T> {
   void options;
   return macroNotTransformed("defineSingleton");
@@ -214,21 +235,29 @@ export function createTransient<T>(
 export function createTransient<T>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[] }
 ): () => T;
+/**
+ * Defines a factory that constructs a fresh value on every call.
+ *
+ * @group Transient
+ * @example
+ * ```ts
+ * const createService = createTransient({ target: Service, deps: [database] });
+ * const service = createService();
+ * ```
+ */
 export function createTransient<T>(options: DiOptions<T, any>): () => T | Promise<T> {
   void options;
   return macroNotTransformed("createTransient");
 }
 
-// defineTransient: deprecated alias of createTransient
 /**
  * Defines a factory that constructs a fresh value on every call.
  *
- * @deprecated Use createTransient instead. defineTransient is kept as an alias
- * during alpha and may be removed in a future release.
- *
+ * @group Transient
  * @example
  * ```ts
  * const createService = defineTransient({ target: Service, deps: [database] });
+ * const service = createService();
  * ```
  */
 export function defineTransient<C extends new (...args: any[]) => any>(
@@ -250,8 +279,13 @@ export function defineTransient<T>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[] }
 ): () => T;
 /**
- * @deprecated Use createTransient instead. defineTransient is kept as an alias
- * during alpha and may be removed in a future release.
+ * Defines a factory that constructs a fresh value on every call.
+ *
+ * @example
+ * ```ts
+ * const createService = defineTransient({ target: Service, deps: [database] });
+ * const service = createService();
+ * ```
  */
 export function defineTransient<T>(options: DiOptions<T, any>): () => T | Promise<T> {
   void options;
@@ -294,6 +328,20 @@ export function createScoped<
 >(
   options: ContextualScopedOptions<T, K, TDeps> & { onRelease?: undefined }
 ): readonly [ScopedProxy<T>, ScopedController<T, K>];
+/**
+ * Creates a stable object proxy that resolves one value per active context and
+ * returns it with a non-creating lifecycle controller.
+ *
+ * @group Scoped
+ * @example
+ * ```ts
+ * const [database, scope] = createScoped({
+ *   factory: request => createDatabase(request),
+ *   context: useRequest,
+ * });
+ * scope.release(request);
+ * ```
+ */
 export function createScoped<T extends object, K, TDeps extends readonly unknown[]>(
   options: ContextualScopedOptions<T, K, TDeps, void | PromiseLike<void>>
 ): readonly [
@@ -344,6 +392,20 @@ export function defineScoped<T, K = unknown>(
 export function defineScoped<T, K = unknown>(
   options: { factory: (...args: any[]) => T; deps?: readonly any[] }
 ): ScopedAccessor<T, K>;
+/**
+ * Defines a keyed per-context accessor with `has`, `peek`, and `release`
+ * lifecycle methods.
+ *
+ * @group Scoped
+ * @example
+ * ```ts
+ * const useService = defineScoped<Service, Request>({
+ *   target: Service,
+ *   deps: [database],
+ * });
+ * const service = useService(request);
+ * ```
+ */
 export function defineScoped<T>(options: DiOptions<T, any>): ScopedAccessor<T | Promise<T>> {
   void options;
   return macroNotTransformed("defineScoped");
@@ -353,6 +415,9 @@ export function defineScoped<T>(options: DiOptions<T, any>): ScopedAccessor<T | 
  * Defines an async teardown function that disposes the supplied resources in
  * reverse order. Supported disposal protocols are resolved at build time.
  *
+ * This macro is experimental and may be removed in a future release.
+ *
+ * @group Lifecycle
  * @example
  * ```ts
  * const teardown = defineAppTeardown([server, database]);
