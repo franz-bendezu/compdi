@@ -15,6 +15,19 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  apps/playground:
+    dependencies:
+      compdi:
+        specifier: workspace:^
+        version: link:../../packages/compdi
+    devDependencies:
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.0
+        version: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)
+
   packages/compdi:
     dependencies:
       '@compdi/core':
@@ -88,19 +101,6 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1))
-
-  playground:
-    dependencies:
-      compdi:
-        specifier: workspace:^
-        version: link:../packages/compdi
-    devDependencies:
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.0
-        version: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)
 
 packages:
 

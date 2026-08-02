@@ -58,7 +58,7 @@ jobs:
         run: |
           npm version "${{ inputs.version-bump }}" --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
-          for dir in packages/core packages/compdi packages/unplugin playground; do
+          for dir in packages/core packages/compdi packages/unplugin apps/playground; do
             npm --prefix "$dir" version "$VERSION" --no-git-tag-version
           done
           echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -81,7 +81,7 @@ jobs:
         if: ${{ inputs.dry-run == false }}
         run: |
           VERSION="${{ steps.version.outputs.value }}"
-          git add package.json pnpm-lock.yaml packages/*/package.json playground/package.json
+          git add package.json pnpm-lock.yaml packages/*/package.json apps/playground/package.json
           git commit -m "chore: release v${VERSION}"
 
       - name: Publish to npm (Dry Run)
