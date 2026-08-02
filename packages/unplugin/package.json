@@ -51,7 +51,7 @@
     "release:ci": "pnpm publish --provenance"
   },
   "dependencies": {
-    "magic-string": "^0.30.11",
+    "magic-string": "^1.1.0",
     "oxc-parser": "^0.142.0",
     "unplugin": "^3.2.0"
   },
