@@ -46,7 +46,7 @@ jobs:
       - name: Build documentation
         run: pnpm --filter @compdi/docs build
         env:
-          NUXT_APP_BASE_URL: /compdi/
+          NUXT_APP_BASE_URL: /
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
