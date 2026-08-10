@@ -54,20 +54,20 @@
   },
   "dependencies": {
     "magic-string": "^1.1.0",
-    "oxc-parser": "^0.142.0",
+    "oxc-parser": "^0.143.0",
     "unplugin": "^3.3.0"
   },
   "devDependencies": {
     "@compdi/core": "workspace:^",
-    "@rspack/cli": "^2.1.7",
-    "@rspack/core": "^2.1.7",
+    "@rspack/cli": "^2.1.8",
+    "@rspack/core": "^2.1.8",
     "@types/node": "^26.1.2",
     "esbuild": "^0.28.1",
-    "rolldown": "^1.2.1",
+    "rolldown": "^1.2.3",
     "rollup": "^4.62.4",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
+    "vite": "^8.2.1",
     "vitest": "^4.1.10"
   }
 }
