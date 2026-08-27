@@ -49,7 +49,7 @@ jobs:
         run: rm -f "$NPM_CONFIG_USERCONFIG"
 
       - name: Create release pull request or publish
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           publish: pnpm release:packages
           version: pnpm version:packages
