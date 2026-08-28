@@ -10,7 +10,8 @@ import type {
   ObjectProperty,
   Program,
   TSType,
-  VariableDeclaration
+  VariableDeclaration,
+  VariableDeclarator
 } from "oxc-parser";
 import type { BindingInfo, BindingKind } from "./types";
 
@@ -35,6 +36,7 @@ interface MacroMatchBase {
   localName: string;
   name?: string;
   exported: boolean;
+  topLevel: boolean;
   scopeName?: string;
   options?: ParsedDiOptions;
   resources?: Expression[];
@@ -84,6 +86,21 @@ export interface TransformContext {
   matches: MacroMatch[];
   imports: MacroImport[];
   bindings: Map<string, BindingInfo>;
+  sourceIdentifiers: Set<string>;
+}
+
+interface DependencyGraphNode {
+  match: DeclarationMacroMatch;
+  binding: BindingInfo;
+  dependencies: DependencyGraphEdge[];
+  eager: boolean;
+  lazy: boolean;
+  declarationStart: number;
+}
+
+interface DependencyGraphEdge {
+  dependency: string;
+  expression: Expression;
 }
 
 function diagnostic(id: string, code: string, node: Node, macro: string, message: string): Error {
@@ -190,17 +207,15 @@ function scopeBindings(node: Node): Set<string> {
   return names;
 }
 
-function nodeChildren(node: Node): Node[] {
-  const children: Node[] = [];
+function visitNodeChildren(node: Node, visit: (child: Node) => void): void {
   for (const key of visitorKeys[node.type] ?? []) {
     const value: unknown = Reflect.get(node, key);
     if (Array.isArray(value)) {
-      for (const item of value) if (isNode(item)) children.push(item);
+      for (const item of value) if (isNode(item)) visit(item);
     } else if (isNode(value)) {
-      children.push(value);
+      visit(value);
     }
   }
-  return children;
 }
 
 function isNode(value: unknown): value is Node {
@@ -246,33 +261,42 @@ export function analyzeModule(code: string, id: string): TransformContext | null
     }
     if (macroSpecifiers.length) imports.push({ node: statement, specifiers: statement.specifiers, macroSpecifiers });
   }
-  if (!localMacros.size) return { code, id, program, matches: [], imports, bindings: new Map() };
+  if (!localMacros.size) {
+    return { code, id, program, matches: [], imports, bindings: new Map(), sourceIdentifiers: new Set() };
+  }
 
   const matches: MacroMatch[] = [];
-  const scopes: Set<string>[] = [];
-  const ancestors: Node[] = [];
-  const visit = (node: Node): void => {
+  const sourceIdentifiers = new Set<string>();
+  const shadowCounts = new Map<string, number>();
+  interface TraversalState {
+    parent?: Node;
+    declarator?: VariableDeclarator;
+    declaration?: VariableDeclaration;
+    exportNode?: Node;
+    functionDepth: number;
+    blockDepth: number;
+  }
+  const visit = (node: Node, state: TraversalState): void => {
+    if (node.type === "Identifier") sourceIdentifiers.add(node.name);
     const opensScope = node.type === "Program" || node.type === "BlockStatement" || isFunctionLike(node);
-    if (opensScope) scopes.push(scopeBindings(node));
+    const scope = opensScope ? scopeBindings(node) : undefined;
+    if (scope && node.type !== "Program") {
+      for (const name of scope) {
+        if (localMacros.has(name)) shadowCounts.set(name, (shadowCounts.get(name) ?? 0) + 1);
+      }
+    }
     if (node.type === "CallExpression" && node.callee?.type === "Identifier") {
       const localName = node.callee.name;
       const macroName = localMacros.get(localName);
-      // The program binding is the import itself; only nested lexical bindings shadow it.
-      const shadowed = scopes.slice(1).some((scope) => scope.has(localName));
+      const shadowed = (shadowCounts.get(localName) ?? 0) > 0;
       if (macroName && !shadowed) {
-        const parent = ancestors.at(-1);
+        const parent = state.parent;
         const awaitNode = parent?.type === "AwaitExpression" && parent.argument === node ? parent : undefined;
         const replaceNode = awaitNode ?? node;
-        const declarator = [...ancestors].reverse().find((a) => a.type === "VariableDeclarator");
-        let declarationIndex = ancestors.length - 1;
-        while (declarationIndex >= 0 && ancestors[declarationIndex].type !== "VariableDeclaration") declarationIndex -= 1;
-        const declarationCandidate = declarationIndex >= 0 ? ancestors[declarationIndex] : undefined;
-        const declaration: VariableDeclaration | undefined = declarationCandidate?.type === "VariableDeclaration"
-          ? declarationCandidate
-          : undefined;
-        const exportNode = declarationIndex > 0 && ancestors[declarationIndex - 1].type === "ExportNamedDeclaration"
-          ? ancestors[declarationIndex - 1]
-          : undefined;
+        const declarator = state.declarator;
+        const declaration = state.declaration;
+        const exportNode = state.exportNode?.type === "ExportNamedDeclaration" &&
+          state.exportNode.declaration === declaration ? state.exportNode : undefined;
         const direct = declarator && declaration?.kind === "const" && declaration.declarations.length === 1 && (declarator.init === node || declarator.init === awaitNode);
         let name: string | undefined;
         let scopeName: string | undefined;
@@ -297,16 +321,30 @@ export function analyzeModule(code: string, id: string): TransformContext | null
           macroName, localName, name, scopeName, options, resources, hasAwait: Boolean(awaitNode),
           typeArgs: node.typeArguments?.params ?? [], call: node, replaceNode,
           declaration: declarationNode, start: declarationNode?.start ?? replaceNode.start, end: declarationNode?.end ?? replaceNode.end,
-          exported: Boolean(exportNode)
+          exported: Boolean(exportNode),
+          topLevel: state.functionDepth === 0 && state.blockDepth === 0
         });
       }
     }
-    ancestors.push(node);
-    for (const child of nodeChildren(node)) visit(child);
-    ancestors.pop();
-    if (opensScope) scopes.pop();
+    const nextState: TraversalState = {
+      parent: node,
+      declarator: node.type === "VariableDeclarator" ? node : state.declarator,
+      declaration: node.type === "VariableDeclaration" ? node : state.declaration,
+      exportNode: node.type === "ExportNamedDeclaration" ? node : state.exportNode,
+      functionDepth: state.functionDepth + (isFunctionLike(node) ? 1 : 0),
+      blockDepth: state.blockDepth + (node.type === "BlockStatement" ? 1 : 0)
+    };
+    visitNodeChildren(node, (child) => visit(child, nextState));
+    if (scope && node.type !== "Program") {
+      for (const name of scope) {
+        if (!localMacros.has(name)) continue;
+        const count = (shadowCounts.get(name) ?? 1) - 1;
+        if (count === 0) shadowCounts.delete(name);
+        else shadowCounts.set(name, count);
+      }
+    }
   };
-  visit(program);
+  visit(program, { functionDepth: 0, blockDepth: 0 });
 
   const bindings = new Map<string, BindingInfo>();
   for (const match of matches) {
@@ -315,7 +353,69 @@ export function analyzeModule(code: string, id: string): TransformContext | null
     if (!kind) continue;
     bindings.set(match.name, createBindingInfo(match.name, kind));
   }
-  return { code, id, program, matches, imports, bindings };
+  validateDependencyGraph(id, code, matches);
+  return { code, id, program, matches, imports, bindings, sourceIdentifiers };
+}
+
+function validateDependencyGraph(
+  id: string,
+  code: string,
+  matches: readonly MacroMatch[]
+): void {
+  const nodes = new Map<string, DependencyGraphNode>();
+  for (const match of matches) {
+    if (!match.topLevel || !isDeclarationMacro(match) || !hasMacroOptions(match)) continue;
+    const kind = bindingKindFor(match);
+    if (!kind) continue;
+    nodes.set(match.name, {
+      match,
+      binding: createBindingInfo(match.name, kind),
+      dependencies: match.options.deps
+        .flatMap((dependency) => dependency.type === "Identifier"
+          ? [{ dependency: dependency.name, expression: dependency }]
+          : []),
+      eager: match.macroName === "createSingleton" ||
+        (match.macroName === "defineSingleton" && !match.options.lazy),
+      lazy: match.options.lazy,
+      declarationStart: match.start
+    });
+  }
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const path: string[] = [];
+  const visit = (name: string): void => {
+    if (visited.has(name)) return;
+    const node = nodes.get(name);
+    if (!node) return;
+    visiting.add(name);
+    path.push(name);
+    for (const edge of node.dependencies) {
+      if (!nodes.has(edge.dependency)) continue;
+      if (visiting.has(edge.dependency)) {
+        const cycleStart = path.indexOf(edge.dependency);
+        const cycle = [...path.slice(cycleStart), edge.dependency];
+        throw diagnostic(id, code, edge.expression, node.match.macroName,
+          `dependency cycle detected: ${cycle.join(" -> ")}`);
+      }
+      visit(edge.dependency);
+    }
+    path.pop();
+    visiting.delete(name);
+    visited.add(name);
+  };
+  for (const name of nodes.keys()) visit(name);
+
+  for (const node of nodes.values()) {
+    if (!node.eager) continue;
+    for (const edge of node.dependencies) {
+      const target = nodes.get(edge.dependency);
+      if (target && target.declarationStart > node.declarationStart) {
+        throw diagnostic(id, code, edge.expression, node.match.macroName,
+          `eager dependency \`${edge.dependency}\` is declared after \`${node.match.name}\``);
+      }
+    }
+  }
 }
 
 function bindingKindFor(match: MacroMatch): BindingKind | undefined {

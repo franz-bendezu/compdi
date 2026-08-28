@@ -7,7 +7,7 @@ const compdiPlugin: UnpluginInstance<
 > = /* #__PURE__ */ createUnplugin(compdiFactory);
 
 export const compdi = compdiPlugin;
-export type { CompdiPluginOptions } from "./core";
+export type { CompdiPluginOptions, CompdiSourceMapMode } from "./core";
 
 export default compdi;
 export const vite = compdi.vite;

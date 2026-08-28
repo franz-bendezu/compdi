@@ -5,12 +5,15 @@ import { collectMacroReplacements } from "./render";
 
 export type TransformCompdiMacrosResult = {
   code: string;
-  map: ReturnType<MagicString["generateMap"]>;
+  map: ReturnType<MagicString["generateMap"]> | null;
 };
+
+export type CompdiSourceMapMode = "hires" | "boundary" | false;
 
 export function transformCompdiMacros(
   code: string,
-  id: string
+  id: string,
+  sourcemap: CompdiSourceMapMode = "hires"
 ): TransformCompdiMacrosResult | null {
   if (!/\.[cm]?[jt]sx?$/.test(id)) {
     return null;
@@ -48,6 +51,10 @@ export function transformCompdiMacros(
 
   return {
     code: ms.toString(),
-    map: ms.generateMap({ hires: true, source: id, includeContent: true })
+    map: sourcemap === false ? null : ms.generateMap({
+      hires: sourcemap === "hires" ? true : "boundary",
+      source: id,
+      includeContent: true
+    })
   };
 }

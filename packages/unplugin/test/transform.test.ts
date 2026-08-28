@@ -188,7 +188,16 @@ describe("transformCompdiMacros", () => {
     }
 
     expect(result.map).toBeTruthy();
-    expect(result.map.toString()).toContain("singleton/define-lazy.input.ts");
+    expect(result.map?.toString()).toContain("singleton/define-lazy.input.ts");
+  });
+
+  it("supports boundary and disabled source maps", () => {
+    const input = readFixture("singleton/create-class.input.ts");
+    const boundary = transformCompdiMacros(input, "boundary.input.ts", "boundary");
+    const disabled = transformCompdiMacros(input, "disabled.input.ts", false);
+
+    expect(boundary?.map?.toString()).toContain("boundary.input.ts");
+    expect(disabled?.map).toBeNull();
   });
 
   describe("AST discovery", () => {
@@ -304,6 +313,56 @@ describe("transformCompdiMacros", () => {
       expect(() => transformInvalid("createScoped", "{ target: Date }")).toThrow(
         /\[compdi\] createScoped at diagnostic\.input\.ts:2:\d+:/
       );
+    });
+  });
+
+  describe("dependency graph diagnostics", () => {
+    const transformGraph = (lines: string[]): ReturnType<typeof transformCompdiMacros> =>
+      transformCompdiMacros([
+        'import { createSingleton, defineSingleton, defineTransient } from "@compdi/core";',
+        "class Service {}",
+        ...lines
+      ].join("\n"), "graph.input.ts");
+
+    it("rejects a direct dependency cycle with its source and path", () => {
+      expect(() => transformGraph([
+        "const service = defineTransient({ target: Service, deps: [service] });"
+      ])).toThrow(/\[compdi\] defineTransient at graph\.input\.ts:3:\d+: dependency cycle detected: service -> service/);
+    });
+
+    it("rejects multi-node transient and lazy cycles", () => {
+      expect(() => transformGraph([
+        "const first = defineTransient({ target: Service, deps: [second] });",
+        "const second = defineTransient({ target: Service, deps: [third] });",
+        "const third = defineTransient({ target: Service, deps: [first] });"
+      ])).toThrow(/first -> second -> third -> first/);
+
+      expect(() => transformGraph([
+        "const first = defineSingleton({ target: Service, deps: [second], lazy: true });",
+        "const second = defineSingleton({ target: Service, deps: [first], lazy: true });"
+      ])).toThrow(/first -> second -> first/);
+    });
+
+    it("rejects eager references to later local DI declarations", () => {
+      expect(() => transformGraph([
+        "const first = createSingleton({ target: Service, deps: [second] });",
+        "const second = createSingleton({ target: Service, deps: [] });"
+      ])).toThrow(/eager dependency `second` is declared after `first`/);
+    });
+
+    it("accepts backward references, opaque expressions, and imported dependencies", () => {
+      const result = transformCompdiMacros([
+        'import { external } from "./external";',
+        'import { createSingleton } from "@compdi/core";',
+        "class Service {}",
+        "const first = createSingleton({ target: Service, deps: [] });",
+        "const second = createSingleton({ target: Service, deps: [first] });",
+        "const third = createSingleton({ target: Service, deps: [external, () => later] });",
+        "const later = 1;"
+      ].join("\n"), "valid-graph.input.ts");
+
+      expect(result?.code).toContain("const second = new Service(first);");
+      expect(result?.code).toContain("new Service(external, () => later)");
     });
   });
 });

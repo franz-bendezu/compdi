@@ -33,10 +33,13 @@ The plugin scans JavaScript and TypeScript source files and rewrites Compdi macr
 ```ts
 type CompdiPluginOptions = {
   include?: RegExp;
+  sourcemap?: "hires" | "boundary" | false;
 };
 ```
 
 By default, the plugin includes files matching `\.[cm]?[jt]sx?$`.
+Source maps use high-resolution mappings by default. Use `"boundary"` for
+lower-cost boundary mappings or `false` to disable transform source maps.
 
 <details>
 <summary>Vite</summary>

@@ -46,6 +46,7 @@
     "lint": "echo 'No lint rules configured for unplugin-compdi'",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
+    "bench": "vitest bench --run test/compiler.bench.ts",
     "clean": "rm -rf dist",
     "release:verify": "pnpm pack --dry-run --json > /dev/null",
     "release": "pnpm publish",

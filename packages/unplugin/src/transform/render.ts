@@ -11,7 +11,7 @@ import { generateTransientDeclaration, generateTransientExpression } from "./tra
 export function collectMacroReplacements(context: TransformContext, ms: MagicString): boolean {
   if (!context.matches.length) return false;
   let unique = 0;
-  const sourceIdentifiers = new Set(context.code.match(/[A-Za-z_$][\w$]*/g) ?? []);
+  const sourceIdentifiers = context.sourceIdentifiers;
   let uninitialized = "__compdi_uninitialized";
   while (sourceIdentifiers.has(uninitialized)) uninitialized += "_";
   const nextUnique = (): number => {
@@ -22,18 +22,36 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
     return unique++;
   };
 
-  const nestedMatches = (start: number, end: number, self?: MacroMatch): MacroMatch[] =>
-    context.matches
-      .filter((match) => match !== self && match.start >= start && match.end <= end)
-      .filter((match, _index, all) => !all.some((parent) => parent !== match && parent.start <= match.start && parent.end >= match.end))
-      .sort((a, b) => a.start - b.start);
+  const sortedMatches = [...context.matches].sort((a, b) => a.start - b.start || b.end - a.end);
+  const children = new Map<MacroMatch, MacroMatch[]>();
+  const roots: MacroMatch[] = [];
+  const stack: MacroMatch[] = [];
+  for (const match of sortedMatches) {
+    while (stack.length) {
+      const parent = stack.at(-1)!;
+      if (parent.start <= match.start && parent.end >= match.end) break;
+      stack.pop();
+    }
+    const parent = stack.at(-1);
+    if (parent) {
+      const entries = children.get(parent);
+      if (entries) entries.push(match);
+      else children.set(parent, [match]);
+    } else {
+      roots.push(match);
+    }
+    stack.push(match);
+  }
 
-  const renderRange = (start: number, end: number, self?: MacroMatch): string => {
-    const children = nestedMatches(start, end, self);
-    if (!children.length) return context.code.slice(start, end);
+  let activeMatch: MacroMatch | undefined;
+
+  const renderRange = (start: number, end: number): string => {
+    const nested = (activeMatch ? children.get(activeMatch) ?? [] : roots)
+      .filter((match) => match.start >= start && match.end <= end);
+    if (!nested.length) return context.code.slice(start, end);
     let output = "";
     let cursor = start;
-    for (const child of children) {
+    for (const child of nested) {
       output += context.code.slice(cursor, child.start) + replacementFor(child);
       cursor = child.end;
     }
@@ -108,10 +126,15 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
   };
 
   function replacementFor(match: MacroMatch): string {
-    return isDeclarationMacro(match) ? declarationFor(match) : expressionFor(match);
+    const previous = activeMatch;
+    activeMatch = match;
+    try {
+      return isDeclarationMacro(match) ? declarationFor(match) : expressionFor(match);
+    } finally {
+      activeMatch = previous;
+    }
   }
 
-  const roots = context.matches.filter((match) => !context.matches.some((parent) => parent !== match && parent.start <= match.start && parent.end >= match.end));
   for (const match of roots) ms.overwrite(match.start, match.end, replacementFor(match));
   return true;
 }
