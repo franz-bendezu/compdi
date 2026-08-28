@@ -1,5 +1,5 @@
 import MagicString from "magic-string";
-import { analyzeModule } from "./context";
+import { analyzeModule, MACRO_NAMES } from "./context";
 import { collectImportReplacements } from "./imports";
 import { collectMacroReplacements } from "./render";
 
@@ -26,6 +26,13 @@ export function transformCompdiMacros(
     return null;
   }
 
+  // Packages may import Compdi runtime types or helpers without using a macro.
+  // Avoid parsing those modules; an imported macro name must occur in the source
+  // even when the local binding is aliased.
+  if (!MACRO_NAMES.some((name) => code.includes(name))) {
+    return null;
+  }
+
   const context = analyzeModule(code, id);
   if (!context) return null;
 
@@ -44,4 +51,3 @@ export function transformCompdiMacros(
     map: ms.generateMap({ hires: true, source: id, includeContent: true })
   };
 }
-

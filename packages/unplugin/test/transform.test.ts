@@ -192,6 +192,15 @@ describe("transformCompdiMacros", () => {
   });
 
   describe("AST discovery", () => {
+    it("skips parsing Compdi imports that contain no macro names", () => {
+      const input = [
+        'import { type SingletonOptions } from "@compdi/core";',
+        "const invalidSyntax = ;"
+      ].join("\n");
+
+      expect(transformCompdiMacros(input, "runtime-only.input.ts")).toBeNull();
+    });
+
     it("matches imported aliases, static property forms, and preserves non-macro imports", () => {
       const input = [
         'import { createSingleton as singleton, macroNotTransformed } from "@compdi/core";',
