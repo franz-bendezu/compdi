@@ -51,9 +51,9 @@ jobs:
       - name: Create release pull request or publish
         uses: changesets/action@v2
         with:
-          publish: pnpm release:packages
-          version: pnpm version:packages
-          commit: "chore: release packages"
-          title: "chore: release packages"
+          publish-script: pnpm release:packages
+          version-script: pnpm version:packages
+          commit-message: "chore: release packages"
+          pr-title: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
