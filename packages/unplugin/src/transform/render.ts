@@ -64,7 +64,8 @@ export function collectMacroReplacements(context: TransformContext, ms: MagicStr
   };
   const deps = (options: ParsedDiOptions): string => options.deps.map((node) => {
     const raw = renderNode(node);
-    return resolveDependencyExpression(node.type === "Identifier" ? node.name : raw, context.bindings);
+    if (!activeMatch) throw new Error("[compdi] Missing active macro during dependency generation");
+    return resolveDependencyExpression(node.type === "Identifier" ? node.name : raw, activeMatch, context);
   }).join(", ");
   const instantiate = (options: ParsedDiOptions): string => {
     const args = deps(options);

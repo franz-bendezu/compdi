@@ -36,7 +36,7 @@ interface MacroMatchBase {
   localName: string;
   name?: string;
   exported: boolean;
-  topLevel: boolean;
+  scopeId: number;
   scopeName?: string;
   options?: ParsedDiOptions;
   resources?: Expression[];
@@ -85,13 +85,53 @@ export interface TransformContext {
   program: Program;
   matches: MacroMatch[];
   imports: MacroImport[];
-  bindings: Map<string, BindingInfo>;
+  scopes: LexicalScope[];
+  bindings: Map<MacroMatch, DiBindingRecord>;
   sourceIdentifiers: Set<string>;
+}
+
+type ScopeKind =
+  | "program"
+  | "function"
+  | "function-body"
+  | "class"
+  | "block"
+  | "catch"
+  | "loop"
+  | "switch"
+  | "static-block"
+  | "module-block";
+
+export interface LexicalScope {
+  id: number;
+  parentId?: number;
+  kind: ScopeKind;
+  start: number;
+  end: number;
+  declaredNames: Set<string>;
+  bindings: Map<string, DiBindingRecord>;
+}
+
+export interface DiBindingRecord {
+  info: BindingInfo;
+  match: DeclarationMacroMatch;
+  scopeId: number;
+}
+
+interface MacroCandidate {
+  macroName: MacroName;
+  localName: string;
+  call: CallExpression;
+  scopeId: number;
+  parent?: Node;
+  declarator?: VariableDeclarator;
+  declaration?: VariableDeclaration;
+  exportNode?: Node;
 }
 
 interface DependencyGraphNode {
   match: DeclarationMacroMatch;
-  binding: BindingInfo;
+  binding: DiBindingRecord;
   dependencies: DependencyGraphEdge[];
   eager: boolean;
   lazy: boolean;
@@ -101,6 +141,7 @@ interface DependencyGraphNode {
 interface DependencyGraphEdge {
   dependency: string;
   expression: Expression;
+  target: DeclarationMacroMatch;
 }
 
 function diagnostic(id: string, code: string, node: Node, macro: string, message: string): Error {
@@ -190,21 +231,66 @@ function isFunctionLike(node: Node): node is OxcFunction | ArrowFunctionExpressi
     node.type === "ArrowFunctionExpression";
 }
 
-function scopeBindings(node: Node): Set<string> {
-  const names = new Set<string>();
+function scopeKind(node: Node, parent: Node | undefined): ScopeKind | undefined {
+  if (node.type === "Program") return "program";
+  if (isFunctionLike(node)) return "function";
+  if (node.type === "ClassDeclaration" || node.type === "ClassExpression") return "class";
+  if (node.type === "CatchClause") return "catch";
+  if (node.type === "ForStatement" || node.type === "ForInStatement" || node.type === "ForOfStatement") return "loop";
+  if (node.type === "SwitchStatement") return "switch";
+  if (node.type === "StaticBlock") return "static-block";
+  if (node.type === "TSModuleBlock") return "module-block";
+  if (node.type === "BlockStatement") {
+    return parent && isFunctionLike(parent) && parent.body === node ? "function-body" : "block";
+  }
+  return undefined;
+}
+
+function addPatternToScope(scopes: LexicalScope[], scopeId: number | undefined, pattern: Node | null | undefined): void {
+  if (scopeId === undefined) return;
+  patternNames(pattern, scopes[scopeId].declaredNames);
+}
+
+function nearestVarScope(scopes: LexicalScope[], scopeId: number): number {
+  let scope = scopes[scopeId];
+  while (scope.kind !== "function-body" && scope.kind !== "program" &&
+    scope.kind !== "static-block" && scope.kind !== "module-block") {
+    if (scope.parentId === undefined) return scope.id;
+    scope = scopes[scope.parentId];
+  }
+  return scope.id;
+}
+
+function registerNodeBindings(
+  node: Node,
+  scopes: LexicalScope[],
+  scopeId: number,
+  parentScopeId: number | undefined
+): void {
+  if (node.type === "ImportDeclaration") {
+    for (const specifier of node.specifiers) addPatternToScope(scopes, scopeId, specifier.local);
+  } else if (node.type === "VariableDeclaration") {
+    const declarationScope = node.kind === "var" ? nearestVarScope(scopes, scopeId) : scopeId;
+    for (const declarator of node.declarations) addPatternToScope(scopes, declarationScope, declarator.id);
+  } else if (node.type === "FunctionDeclaration") {
+    addPatternToScope(scopes, parentScopeId, node.id);
+    addPatternToScope(scopes, scopeId, node.id);
+  } else if (node.type === "FunctionExpression") {
+    addPatternToScope(scopes, scopeId, node.id);
+  } else if (node.type === "ClassDeclaration") {
+    addPatternToScope(scopes, parentScopeId, node.id);
+    addPatternToScope(scopes, scopeId, node.id);
+  } else if (node.type === "ClassExpression") {
+    addPatternToScope(scopes, scopeId, node.id);
+  } else if (node.type === "TSEnumDeclaration" || node.type === "TSModuleDeclaration") {
+    addPatternToScope(scopes, scopeId, node.id);
+  }
+
   if (isFunctionLike(node)) {
-    for (const param of node.params) patternNames(param, names);
-    if (node.id) patternNames(node.id, names);
+    for (const param of node.params) addPatternToScope(scopes, scopeId, param);
+  } else if (node.type === "CatchClause") {
+    addPatternToScope(scopes, scopeId, node.param);
   }
-  const body = node.type === "Program" || node.type === "BlockStatement"
-    ? node.body
-    : isFunctionLike(node) && node.body?.type === "BlockStatement" ? node.body.body : [];
-  for (const statement of body) {
-    const decl = statement.type === "ExportNamedDeclaration" ? statement.declaration : statement;
-    if (decl?.type === "VariableDeclaration") for (const d of decl.declarations) patternNames(d.id, names);
-    else if (decl?.type === "FunctionDeclaration" || decl?.type === "ClassDeclaration") patternNames(decl.id, names);
-  }
-  return names;
 }
 
 function visitNodeChildren(node: Node, visit: (child: Node) => void): void {
@@ -262,118 +348,148 @@ export function analyzeModule(code: string, id: string): TransformContext | null
     if (macroSpecifiers.length) imports.push({ node: statement, specifiers: statement.specifiers, macroSpecifiers });
   }
   if (!localMacros.size) {
-    return { code, id, program, matches: [], imports, bindings: new Map(), sourceIdentifiers: new Set() };
+    return { code, id, program, matches: [], imports, scopes: [], bindings: new Map(), sourceIdentifiers: new Set() };
   }
 
-  const matches: MacroMatch[] = [];
+  const candidates: MacroCandidate[] = [];
+  const scopes: LexicalScope[] = [];
   const sourceIdentifiers = new Set<string>();
-  const shadowCounts = new Map<string, number>();
   interface TraversalState {
     parent?: Node;
     declarator?: VariableDeclarator;
     declaration?: VariableDeclaration;
     exportNode?: Node;
-    functionDepth: number;
-    blockDepth: number;
+    scopeId?: number;
   }
   const visit = (node: Node, state: TraversalState): void => {
     if (node.type === "Identifier") sourceIdentifiers.add(node.name);
-    const opensScope = node.type === "Program" || node.type === "BlockStatement" || isFunctionLike(node);
-    const scope = opensScope ? scopeBindings(node) : undefined;
-    if (scope && node.type !== "Program") {
-      for (const name of scope) {
-        if (localMacros.has(name)) shadowCounts.set(name, (shadowCounts.get(name) ?? 0) + 1);
-      }
+    const kind = scopeKind(node, state.parent);
+    let scopeId = state.scopeId;
+    if (kind) {
+      scopeId = scopes.length;
+      scopes.push({
+        id: scopeId,
+        parentId: state.scopeId,
+        kind,
+        start: node.start,
+        end: node.end,
+        declaredNames: new Set(),
+        bindings: new Map()
+      });
     }
+    if (scopeId === undefined) throw new Error("[compdi] Missing lexical scope during AST traversal");
+    registerNodeBindings(node, scopes, scopeId, state.scopeId);
     if (node.type === "CallExpression" && node.callee?.type === "Identifier") {
       const localName = node.callee.name;
       const macroName = localMacros.get(localName);
-      const shadowed = (shadowCounts.get(localName) ?? 0) > 0;
-      if (macroName && !shadowed) {
-        const parent = state.parent;
-        const awaitNode = parent?.type === "AwaitExpression" && parent.argument === node ? parent : undefined;
-        const replaceNode = awaitNode ?? node;
-        const declarator = state.declarator;
-        const declaration = state.declaration;
-        const exportNode = state.exportNode?.type === "ExportNamedDeclaration" &&
-          state.exportNode.declaration === declaration ? state.exportNode : undefined;
-        const direct = declarator && declaration?.kind === "const" && declaration.declarations.length === 1 && (declarator.init === node || declarator.init === awaitNode);
-        let name: string | undefined;
-        let scopeName: string | undefined;
-        if (direct && declarator.id.type === "Identifier") name = declarator.id.name;
-        else if (direct && macroName === "createScoped" && declarator.id.type === "ArrayPattern" && declarator.id.elements.length === 2 && declarator.id.elements.every((x) => x?.type === "Identifier")) {
-          const [valueBinding, scopeBinding] = declarator.id.elements;
-          if (valueBinding?.type === "Identifier" && scopeBinding?.type === "Identifier") {
-            name = valueBinding.name; scopeName = scopeBinding.name;
-          }
-        }
-        const isTeardown = macroName === "defineAppTeardown";
-        let options: ParsedDiOptions | undefined;
-        let resources: Expression[] | undefined;
-        if (isTeardown) {
-          if (node.arguments.length !== 1 || node.arguments[0]?.type !== "ArrayExpression") throw diagnostic(id, code, node, macroName, "expected exactly one array-literal argument");
-          const resourceNodes = node.arguments[0].elements.filter((item) => item !== null);
-          if (resourceNodes.some((item) => item.type === "SpreadElement")) throw diagnostic(id, code, node, macroName, "resource spreads are not supported");
-          resources = resourceNodes.filter((item): item is Expression => item.type !== "SpreadElement");
-        } else options = parseOptions(id, code, macroName, node);
-        const declarationNode = name ? (exportNode ?? declaration) : undefined;
-        matches.push({
-          macroName, localName, name, scopeName, options, resources, hasAwait: Boolean(awaitNode),
-          typeArgs: node.typeArguments?.params ?? [], call: node, replaceNode,
-          declaration: declarationNode, start: declarationNode?.start ?? replaceNode.start, end: declarationNode?.end ?? replaceNode.end,
-          exported: Boolean(exportNode),
-          topLevel: state.functionDepth === 0 && state.blockDepth === 0
-        });
-      }
+      if (macroName) candidates.push({
+        macroName,
+        localName,
+        call: node,
+        scopeId,
+        parent: state.parent,
+        declarator: state.declarator,
+        declaration: state.declaration,
+        exportNode: state.exportNode
+      });
     }
     const nextState: TraversalState = {
       parent: node,
       declarator: node.type === "VariableDeclarator" ? node : state.declarator,
       declaration: node.type === "VariableDeclaration" ? node : state.declaration,
       exportNode: node.type === "ExportNamedDeclaration" ? node : state.exportNode,
-      functionDepth: state.functionDepth + (isFunctionLike(node) ? 1 : 0),
-      blockDepth: state.blockDepth + (node.type === "BlockStatement" ? 1 : 0)
+      scopeId
     };
     visitNodeChildren(node, (child) => visit(child, nextState));
-    if (scope && node.type !== "Program") {
-      for (const name of scope) {
-        if (!localMacros.has(name)) continue;
-        const count = (shadowCounts.get(name) ?? 1) - 1;
-        if (count === 0) shadowCounts.delete(name);
-        else shadowCounts.set(name, count);
+  };
+  visit(program, {});
+
+  const matches: MacroMatch[] = [];
+  for (const candidate of candidates) {
+    let lookupScope: LexicalScope | undefined = scopes[candidate.scopeId];
+    let shadowed = false;
+    while (lookupScope && lookupScope.kind !== "program") {
+      if (lookupScope.declaredNames.has(candidate.localName)) {
+        shadowed = true;
+        break;
+      }
+      lookupScope = lookupScope.parentId === undefined ? undefined : scopes[lookupScope.parentId];
+    }
+    if (shadowed) continue;
+
+    const { macroName, localName, call } = candidate;
+    const awaitNode = candidate.parent?.type === "AwaitExpression" && candidate.parent.argument === call
+      ? candidate.parent
+      : undefined;
+    const replaceNode = awaitNode ?? call;
+    const declarator = candidate.declarator;
+    const declaration = candidate.declaration;
+    const exportNode = candidate.exportNode?.type === "ExportNamedDeclaration" &&
+      candidate.exportNode.declaration === declaration ? candidate.exportNode : undefined;
+    const direct = declarator && declaration?.kind === "const" && declaration.declarations.length === 1 &&
+      (declarator.init === call || declarator.init === awaitNode);
+    let name: string | undefined;
+    let scopeName: string | undefined;
+    if (direct && declarator.id.type === "Identifier") name = declarator.id.name;
+    else if (direct && macroName === "createScoped" && declarator.id.type === "ArrayPattern" &&
+      declarator.id.elements.length === 2 && declarator.id.elements.every((item) => item?.type === "Identifier")) {
+      const [valueBinding, scopeBinding] = declarator.id.elements;
+      if (valueBinding?.type === "Identifier" && scopeBinding?.type === "Identifier") {
+        name = valueBinding.name;
+        scopeName = scopeBinding.name;
       }
     }
-  };
-  visit(program, { functionDepth: 0, blockDepth: 0 });
+    let options: ParsedDiOptions | undefined;
+    let resources: Expression[] | undefined;
+    if (macroName === "defineAppTeardown") {
+      if (call.arguments.length !== 1 || call.arguments[0]?.type !== "ArrayExpression") {
+        throw diagnostic(id, code, call, macroName, "expected exactly one array-literal argument");
+      }
+      const resourceNodes = call.arguments[0].elements.filter((item) => item !== null);
+      if (resourceNodes.some((item) => item.type === "SpreadElement")) {
+        throw diagnostic(id, code, call, macroName, "resource spreads are not supported");
+      }
+      resources = resourceNodes.filter((item): item is Expression => item.type !== "SpreadElement");
+    } else {
+      options = parseOptions(id, code, macroName, call);
+    }
+    const declarationNode = name ? (exportNode ?? declaration) : undefined;
+    matches.push({
+      macroName, localName, name, scopeName, options, resources, hasAwait: Boolean(awaitNode),
+      typeArgs: call.typeArguments?.params ?? [], call, replaceNode,
+      declaration: declarationNode, start: declarationNode?.start ?? replaceNode.start,
+      end: declarationNode?.end ?? replaceNode.end, exported: Boolean(exportNode), scopeId: candidate.scopeId
+    });
+  }
 
-  const bindings = new Map<string, BindingInfo>();
+  const bindings = new Map<MacroMatch, DiBindingRecord>();
   for (const match of matches) {
-    if (!match.name || !match.declaration) continue;
+    if (!isDeclarationMacro(match)) continue;
     const kind = bindingKindFor(match);
     if (!kind) continue;
-    bindings.set(match.name, createBindingInfo(match.name, kind));
+    const binding = { info: createBindingInfo(match.name, kind), match, scopeId: match.scopeId };
+    bindings.set(match, binding);
+    scopes[match.scopeId].bindings.set(match.name, binding);
   }
-  validateDependencyGraph(id, code, matches);
-  return { code, id, program, matches, imports, bindings, sourceIdentifiers };
+  const context = { code, id, program, matches, imports, scopes, bindings, sourceIdentifiers };
+  validateDependencyGraph(context);
+  return context;
 }
 
-function validateDependencyGraph(
-  id: string,
-  code: string,
-  matches: readonly MacroMatch[]
-): void {
-  const nodes = new Map<string, DependencyGraphNode>();
-  for (const match of matches) {
-    if (!match.topLevel || !isDeclarationMacro(match) || !hasMacroOptions(match)) continue;
-    const kind = bindingKindFor(match);
-    if (!kind) continue;
-    nodes.set(match.name, {
+function validateDependencyGraph(context: TransformContext): void {
+  const nodes = new Map<DeclarationMacroMatch, DependencyGraphNode>();
+  for (const [candidate, binding] of context.bindings) {
+    if (!isDeclarationMacro(candidate) || !hasMacroOptions(candidate)) continue;
+    const match = candidate;
+    nodes.set(match, {
       match,
-      binding: createBindingInfo(match.name, kind),
+      binding,
       dependencies: match.options.deps
-        .flatMap((dependency) => dependency.type === "Identifier"
-          ? [{ dependency: dependency.name, expression: dependency }]
-          : []),
+        .flatMap((dependency) => {
+          if (dependency.type !== "Identifier") return [];
+          const target = resolveBinding(context, match, dependency.name);
+          return target ? [{ dependency: target.match.name, expression: dependency, target: target.match }] : [];
+        }),
       eager: match.macroName === "createSingleton" ||
         (match.macroName === "defineSingleton" && !match.options.lazy),
       lazy: match.options.lazy,
@@ -381,37 +497,37 @@ function validateDependencyGraph(
     });
   }
 
-  const visiting = new Set<string>();
-  const visited = new Set<string>();
-  const path: string[] = [];
-  const visit = (name: string): void => {
-    if (visited.has(name)) return;
-    const node = nodes.get(name);
+  const visiting = new Set<DeclarationMacroMatch>();
+  const visited = new Set<DeclarationMacroMatch>();
+  const path: DeclarationMacroMatch[] = [];
+  const visit = (match: DeclarationMacroMatch): void => {
+    if (visited.has(match)) return;
+    const node = nodes.get(match);
     if (!node) return;
-    visiting.add(name);
-    path.push(name);
+    visiting.add(match);
+    path.push(match);
     for (const edge of node.dependencies) {
-      if (!nodes.has(edge.dependency)) continue;
-      if (visiting.has(edge.dependency)) {
-        const cycleStart = path.indexOf(edge.dependency);
-        const cycle = [...path.slice(cycleStart), edge.dependency];
-        throw diagnostic(id, code, edge.expression, node.match.macroName,
+      if (!nodes.has(edge.target)) continue;
+      if (visiting.has(edge.target)) {
+        const cycleStart = path.indexOf(edge.target);
+        const cycle = [...path.slice(cycleStart), edge.target].map((entry) => entry.name);
+        throw diagnostic(context.id, context.code, edge.expression, node.match.macroName,
           `dependency cycle detected: ${cycle.join(" -> ")}`);
       }
-      visit(edge.dependency);
+      visit(edge.target);
     }
     path.pop();
-    visiting.delete(name);
-    visited.add(name);
+    visiting.delete(match);
+    visited.add(match);
   };
-  for (const name of nodes.keys()) visit(name);
+  for (const match of nodes.keys()) visit(match);
 
   for (const node of nodes.values()) {
     if (!node.eager) continue;
     for (const edge of node.dependencies) {
-      const target = nodes.get(edge.dependency);
-      if (target && target.declarationStart > node.declarationStart) {
-        throw diagnostic(id, code, edge.expression, node.match.macroName,
+      const target = nodes.get(edge.target);
+      if (target && target.binding.scopeId === node.binding.scopeId && target.declarationStart > node.declarationStart) {
+        throw diagnostic(context.id, context.code, edge.expression, node.match.macroName,
           `eager dependency \`${edge.dependency}\` is declared after \`${node.match.name}\``);
       }
     }
@@ -430,8 +546,32 @@ function bindingKindFor(match: MacroMatch): BindingKind | undefined {
   }
 }
 
-export function resolveDependencyExpression(dependency: string, bindings: ReadonlyMap<string, BindingInfo>): string {
-  const binding = bindings.get(dependency);
+export function resolveBinding(
+  context: TransformContext,
+  consumer: MacroMatch,
+  name: string
+): DiBindingRecord | undefined {
+  let scope: LexicalScope | undefined = context.scopes[consumer.scopeId];
+  while (scope) {
+    if (scope.declaredNames.has(name)) return scope.bindings.get(name);
+    scope = scope.parentId === undefined ? undefined : context.scopes[scope.parentId];
+  }
+  return undefined;
+}
+
+export function declarationBinding(
+  context: TransformContext,
+  match: DeclarationMacroMatch
+): DiBindingRecord | undefined {
+  return context.bindings.get(match);
+}
+
+export function resolveDependencyExpression(
+  dependency: string,
+  consumer: MacroMatch,
+  context: TransformContext
+): string {
+  const binding = resolveBinding(context, consumer, dependency)?.info;
   if (!binding) return dependency;
   switch (binding.kind) {
     case "create-singleton": case "create-scoped": case "define-singleton": return binding.instanceName;
@@ -440,8 +580,12 @@ export function resolveDependencyExpression(dependency: string, bindings: Readon
   }
 }
 
-export function resolveTeardownResource(resource: string, bindings: ReadonlyMap<string, BindingInfo>): { expression: string; awaitExpression: boolean } {
-  const binding = bindings.get(resource);
+export function resolveTeardownResource(
+  resource: string,
+  consumer: MacroMatch,
+  context: TransformContext
+): { expression: string; awaitExpression: boolean } {
+  const binding = resolveBinding(context, consumer, resource)?.info;
   if (!binding) return { expression: resource, awaitExpression: false };
   switch (binding.kind) {
     case "create-singleton": case "create-scoped": case "define-singleton": return { expression: binding.instanceName, awaitExpression: false };

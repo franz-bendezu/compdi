@@ -1,4 +1,5 @@
 import type { DeclarationMacroMatch, OptionsMacroMatch } from "./context";
+import { declarationBinding } from "./context";
 import type { MacroGenerationContext } from "./generation";
 
 type SingletonMatch = OptionsMacroMatch<"createSingleton" | "defineSingleton">;
@@ -33,7 +34,7 @@ export function generateSingletonDeclaration(match: SingletonMatch & Declaration
     return `${visibility}const ${name} = ${match.hasAwait ? `await ${expression}` : expression};`;
   }
 
-  const binding = generation.module.bindings.get(name);
+  const binding = declarationBinding(generation.module, match)?.info;
   if (!binding) throw new Error(`[compdi] Missing binding metadata for ${name}`);
   if (options.lazy) {
     const annotation = generation.typeAnnotation(options);

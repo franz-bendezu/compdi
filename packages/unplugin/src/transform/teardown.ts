@@ -7,7 +7,11 @@ type TeardownMatch = Extract<MacroMatch, { macroName: "defineAppTeardown" }>;
 export function generateTeardownExpression(match: TeardownMatch, generation: MacroGenerationContext, indent = ""): string {
   const lines = (match.resources ?? []).flatMap((node, index) => {
     const raw = generation.renderNode(node);
-    const resolved = resolveTeardownResource(node.type === "Identifier" ? node.name : raw, generation.module.bindings);
+    const resolved = resolveTeardownResource(
+      node.type === "Identifier" ? node.name : raw,
+      match,
+      generation.module
+    );
     const local = `__resource_${index}`;
     return [
       `${indent}  const ${local} = ${resolved.awaitExpression ? `await ${resolved.expression}` : resolved.expression};`,

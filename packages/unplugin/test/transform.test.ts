@@ -235,6 +235,19 @@ describe("transformCompdiMacros", () => {
       expect(result?.code).toContain("export const service = new Date();");
     });
 
+    it("does not transform aliases shadowed by catch or loop bindings", () => {
+      const input = [
+        'import { createSingleton as singleton } from "@compdi/core";',
+        "try { throw null; } catch (singleton) { singleton({ target: Date, deps: [] }); }",
+        "for (const singleton of []) { singleton({ target: Date, deps: [] }); }",
+        "export const service = singleton({ target: Date, deps: [] });"
+      ].join("\n");
+      const result = transformCompdiMacros(input, "catch-loop-shadow.input.ts");
+
+      expect(result?.code.match(/singleton\(\{ target: Date, deps: \[\] \}\)/g)).toHaveLength(2);
+      expect(result?.code).toContain("export const service = new Date();");
+    });
+
     it("keeps declarations inside exported functions local", () => {
       const input = [
         'import { createSingleton } from "@compdi/core";',
@@ -363,6 +376,220 @@ describe("transformCompdiMacros", () => {
 
       expect(result?.code).toContain("const second = new Service(first);");
       expect(result?.code).toContain("new Service(external, () => later)");
+    });
+  });
+
+  describe("lexical dependency resolution", () => {
+    const imports = 'import { createSingleton, defineSingleton, defineTransient, defineAppTeardown } from "@compdi/core";';
+
+    it("keeps function-local bindings from replacing module bindings with the same name", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "const service = defineTransient({ target: Service, deps: [] });",
+        "function make() {",
+        "  const service = defineSingleton({ target: Service, deps: [] });",
+        "  return service;",
+        "}",
+        "export const consumer = createSingleton({ target: Service, deps: [service] });"
+      ].join("\n"), "scope-collision.input.ts");
+
+      expect(result?.code).toContain("export const consumer = new Service(service());");
+      expect(result?.code).not.toContain("export const consumer = new Service(__service);");
+    });
+
+    it("resolves nested and sibling scopes independently", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "function first() {",
+        "  const shared = defineSingleton({ target: Service, deps: [] });",
+        "  { const consumer = createSingleton({ target: Service, deps: [shared] }); return consumer; }",
+        "}",
+        "function second() {",
+        "  const shared = defineTransient({ target: Service, deps: [] });",
+        "  const consumer = createSingleton({ target: Service, deps: [shared] });",
+        "  return consumer;",
+        "}"
+      ].join("\n"), "nested-scopes.input.ts");
+
+      expect(result?.code).toContain("new Service(__shared)");
+      expect(result?.code).toContain("new Service(shared())");
+    });
+
+    it("stops at parameters, variables, destructuring, catch bindings, and loop bindings", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "const dependency = defineTransient({ target: Service, deps: [] });",
+        "function parameter(dependency: unknown) { return createSingleton({ target: Service, deps: [dependency] }); }",
+        "function variable() { const dependency = {}; return createSingleton({ target: Service, deps: [dependency] }); }",
+        "function destructured(source: { dependency: unknown }) { const { dependency } = source; return createSingleton({ target: Service, deps: [dependency] }); }",
+        "try { throw null; } catch (dependency) { createSingleton({ target: Service, deps: [dependency] }); }",
+        "for (const dependency of []) { createSingleton({ target: Service, deps: [dependency] }); }"
+      ].join("\n"), "ordinary-shadowing.input.ts");
+
+      expect(result?.code.match(/new Service\(dependency\)/g)).toHaveLength(5);
+      expect(result?.code).not.toContain("new Service(dependency())");
+    });
+
+    it("honors function-scoped var hoisting when resolving dependencies", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "const dependency = defineTransient({ target: Service, deps: [] });",
+        "function make() {",
+        "  const consumer = createSingleton({ target: Service, deps: [dependency] });",
+        "  var dependency = {};",
+        "  return consumer;",
+        "}"
+      ].join("\n"), "var-shadowing.input.ts");
+
+      expect(result?.code).toContain("const consumer = new Service(dependency);");
+      expect(result?.code).not.toContain("const consumer = new Service(dependency());");
+    });
+
+    it("uses AST var bindings for simple, multiple, and destructured declarations", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "const simple = defineTransient({ target: Service, deps: [] });",
+        "const multiple = defineTransient({ target: Service, deps: [] });",
+        "const objectDependency = defineTransient({ target: Service, deps: [] });",
+        "const arrayDependency = defineTransient({ target: Service, deps: [] });",
+        "function make() {",
+        "  createSingleton({ target: Service, deps: [simple] });",
+        "  createSingleton({ target: Service, deps: [multiple] });",
+        "  createSingleton({ target: Service, deps: [objectDependency] });",
+        "  createSingleton({ target: Service, deps: [arrayDependency] });",
+        "  var simple;",
+        "  var multiple, other;",
+        "  var { objectDependency } = {};",
+        "  var [arrayDependency] = [];",
+        "}"
+      ].join("\n"), "var-patterns.input.ts");
+
+      for (const dependency of ["simple", "multiple", "objectDependency", "arrayDependency"]) {
+        expect(result?.code).toContain(`new Service(${dependency})`);
+        expect(result?.code).not.toContain(`new Service(${dependency}())`);
+      }
+    });
+
+    it("defers macro validation when a later var shadows the imported alias", () => {
+      const input = [
+        'import { createSingleton as macro } from "@compdi/core";',
+        "function local() {",
+        "  macro({ unknown: true });",
+        "  var macro = () => null;",
+        "}"
+      ].join("\n");
+
+      expect(() => transformCompdiMacros(input, "var-alias-shadow.input.ts")).not.toThrow();
+      expect(transformCompdiMacros(input, "var-alias-shadow.input.ts")).toBeNull();
+    });
+
+    it("keeps body var declarations out of default parameter scope", () => {
+      const input = [
+        'import { createSingleton as macro } from "@compdi/core";',
+        "function make(value = macro({ target: Date, deps: [] })) {",
+        "  var macro = () => null;",
+        "  return value;",
+        "}"
+      ].join("\n");
+      const result = transformCompdiMacros(input, "parameter-scope.input.ts");
+
+      expect(result?.code).toContain("function make(value = new Date())");
+    });
+
+    it("treats named class expressions as lexical bindings", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "const Dependency = defineTransient({ target: Service, deps: [] });",
+        "const Holder = class Dependency {",
+        "  static value = createSingleton({ target: Service, deps: [Dependency] });",
+        "};"
+      ].join("\n"), "class-scope.input.ts");
+
+      expect(result?.code).toContain("static value = new Service(Dependency)");
+      expect(result?.code).not.toContain("static value = new Service(Dependency())");
+    });
+
+    it("ignores var text in comments, strings, and larger identifiers", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "// var dependency = somethingElse;",
+        'const text = "var dependency";',
+        "const variable = text;",
+        "const dependency = defineTransient({ target: Service, deps: [] });",
+        "const consumer = createSingleton({ target: Service, deps: [dependency] });",
+        "void variable;"
+      ].join("\n"), "var-text.input.ts");
+
+      expect(result?.code).toContain("const consumer = new Service(dependency());");
+    });
+
+    it("detects cycles inside functions and blocks without crossing sibling scopes", () => {
+      expect(() => transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "function make() {",
+        "  const first = defineTransient({ target: Service, deps: [second] });",
+        "  const second = defineTransient({ target: Service, deps: [first] });",
+        "}"
+      ].join("\n"), "function-cycle.input.ts")).toThrow(/first -> second -> first/);
+
+      expect(() => transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "{",
+        "  const first = defineTransient({ target: Service, deps: [second] });",
+        "  const second = defineTransient({ target: Service, deps: [first] });",
+        "}"
+      ].join("\n"), "block-cycle.input.ts")).toThrow(/first -> second -> first/);
+
+      expect(() => transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "function first() { const service = defineTransient({ target: Service, deps: [] }); return service; }",
+        "function second() { const service = defineTransient({ target: Service, deps: [] }); return service; }"
+      ].join("\n"), "sibling-bindings.input.ts")).not.toThrow();
+    });
+
+    it("rejects same-scope eager forward references but permits outer references", () => {
+      expect(() => transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "function make() {",
+        "  const consumer = createSingleton({ target: Service, deps: [dependency] });",
+        "  const dependency = createSingleton({ target: Service, deps: [] });",
+        "}"
+      ].join("\n"), "local-forward.input.ts")).toThrow(/eager dependency `dependency` is declared after `consumer`/);
+
+      expect(() => transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "function make() { return createSingleton({ target: Service, deps: [dependency] }); }",
+        "const dependency = createSingleton({ target: Service, deps: [] });"
+      ].join("\n"), "outer-forward.input.ts")).not.toThrow();
+    });
+
+    it("resolves teardown resources from the teardown declaration scope", () => {
+      const result = transformCompdiMacros([
+        imports,
+        "class Service {}",
+        "const resource = defineSingleton({ target: Service, deps: [] });",
+        "const stop = defineAppTeardown([resource]);",
+        "function local() {",
+        "  const resource = defineTransient({ target: Service, deps: [] });",
+        "  const stop = defineAppTeardown([resource]);",
+        "  return stop;",
+        "}"
+      ].join("\n"), "teardown-scopes.input.ts");
+
+      expect(result?.code).toContain("const __resource_0 = __resource;");
+      expect(result?.code).toContain("const __resource_0 = resource();");
     });
   });
 });
