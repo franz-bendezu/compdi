@@ -1,5 +1,11 @@
 # unplugin-compdi
 
+## 0.11.5
+
+### Patch Changes
+
+- 30c8e13: Improve compiler dependency validation, lexical scope resolution, rendering performance, and source map configuration.
+
 ## 0.11.4
 
 ### Patch Changes
